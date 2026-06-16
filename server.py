@@ -368,12 +368,59 @@ def simulate():
     future_projs = get_future_weather_projections(lat, lon) if (use_future_projections or op_cost_mode == 'model') else []
     proj_by_year = {p['year']: p for p in future_projs}
     
+    # Vorabberechnung des Amortisationszeitpunkts (Payback Year) bis maximal 100 Jahre
+    payback_year = None
+    temp_cum_profit = 0.0
+    temp_capacity_multiplier = 1.0
+    
+    for y_idx in range(1, 101):
+        sim_year = year + y_idx - 1
+        
+        # Jährliche Parameter initialisieren (Standard ohne Zukunftsprognosen)
+        year_degradation = adjusted_degradation
+        year_op_multiplier = 1.0
+        year_yield_multiplier = 1.0
+        
+        if (use_future_projections or op_cost_mode == 'model') and sim_year in proj_by_year:
+            proj = proj_by_year[sim_year]
+            heatwaves = proj.get('heatwaves_rcp85', 0)
+            extreme_wind_days = proj.get('extreme_wind_speed_days_rcp85', 10.0)
+            mean_wind_speed = proj.get('mean wind speed rcp85(m/s)', 3.5)
+            
+            if use_future_projections:
+                year_yield_multiplier = max(0.5, 1.0 - (0.008 * heatwaves))
+                wind_excess = max(0.0, extreme_wind_days - 10.0)
+                year_degradation = adjusted_degradation + (0.0002 * wind_excess)
+            
+            year_op_multiplier = 1.0 + (0.015 * heatwaves) + (0.01 * max(0.0, mean_wind_speed - 3.0))
+            
+        temp_capacity_multiplier *= (1.0 - year_degradation)
+        production_kwh = baseline_production_kwh * temp_capacity_multiplier * year_yield_multiplier
+        revenue = production_kwh * elec_price
+        
+        if op_cost_mode == 'custom':
+            op_cost = pred_mw * custom_op_cost_per_mw * ((1.0 + custom_op_cost_escalation) ** (y_idx - 1))
+        elif op_cost_mode == 'model':
+            op_cost = pred_mw * (18000.0 * om_multiplier) * year_op_multiplier * ((1.0 + inflation_rate) ** (y_idx - 1))
+        else: # 'standard'
+            op_cost = pred_mw * op_cost_per_mw * (year_op_multiplier if use_future_projections else 1.0)
+            
+        temp_cum_profit += (revenue - op_cost)
+        
+        if temp_cum_profit >= (total_cost + target_profit):
+            payback_year = y_idx
+            break
+
+    # Der Simulationszeitraum wird vergrößert, falls die Amortisation länger dauert
+    active_sim_years = years
+    if payback_year is not None:
+        active_sim_years = max(years, payback_year)
+        
     sim_data = []
     cum_net_profit = 0.0
-    payback_year = None
     capacity_multiplier = 1.0
     
-    for y_idx in range(1, years + 1):
+    for y_idx in range(1, active_sim_years + 1):
         sim_year = year + y_idx - 1
         
         # Jährliche Parameter initialisieren (Standard ohne Zukunftsprognosen)
@@ -411,8 +458,8 @@ def simulate():
             op_cost = pred_mw * (18000.0 * om_multiplier) * year_op_multiplier * ((1.0 + inflation_rate) ** (y_idx - 1))
         else: # 'standard'
             op_cost = pred_mw * op_cost_per_mw * (year_op_multiplier if use_future_projections else 1.0)
+            
         net_profit = revenue - op_cost
-        
         cum_net_profit += net_profit
         
         sim_data.append({
@@ -424,50 +471,6 @@ def simulate():
             "cum_profit": float(cum_net_profit - total_cost)
         })
         
-        if payback_year is None and cum_net_profit >= (total_cost + target_profit):
-            payback_year = y_idx
-
-    # Falls es sich innerhalb des Standard-Laufzeitraums noch nicht amortisiert hat, rechnen wir intern weiter (bis maximal 100 Jahre)
-    if payback_year is None:
-        temp_cum_profit = cum_net_profit
-        temp_capacity_multiplier = capacity_multiplier
-        for y_idx in range(years + 1, 101):
-            sim_year = year + y_idx - 1
-            
-            year_degradation = adjusted_degradation
-            year_op_multiplier = 1.0
-            year_yield_multiplier = 1.0
-            
-            if (use_future_projections or op_cost_mode == 'model') and sim_year in proj_by_year:
-                proj = proj_by_year[sim_year]
-                heatwaves = proj.get('heatwaves_rcp85', 0)
-                extreme_wind_days = proj.get('extreme_wind_speed_days_rcp85', 10.0)
-                mean_wind_speed = proj.get('mean wind speed rcp85(m/s)', 3.5)
-                
-                if use_future_projections:
-                    year_yield_multiplier = max(0.5, 1.0 - (0.008 * heatwaves))
-                    wind_excess = max(0.0, extreme_wind_days - 10.0)
-                    year_degradation = adjusted_degradation + (0.0002 * wind_excess)
-                
-                year_op_multiplier = 1.0 + (0.015 * heatwaves) + (0.01 * max(0.0, mean_wind_speed - 3.0))
-                
-            temp_capacity_multiplier *= (1.0 - year_degradation)
-            production_kwh = baseline_production_kwh * temp_capacity_multiplier * year_yield_multiplier
-            revenue = production_kwh * elec_price
-            
-            if op_cost_mode == 'custom':
-                op_cost = pred_mw * custom_op_cost_per_mw * ((1.0 + custom_op_cost_escalation) ** (y_idx - 1))
-            elif op_cost_mode == 'model':
-                op_cost = pred_mw * (18000.0 * om_multiplier) * year_op_multiplier * ((1.0 + inflation_rate) ** (y_idx - 1))
-            else: # 'standard'
-                op_cost = pred_mw * op_cost_per_mw * (year_op_multiplier if use_future_projections else 1.0)
-                
-            temp_cum_profit += (revenue - op_cost)
-            
-            if temp_cum_profit >= (total_cost + target_profit):
-                payback_year = y_idx
-                break
-
     roi = (cum_net_profit / total_cost) * 100.0 if total_cost > 0 else 0.0
 
     # Falls Zukunftsprognosen aktiv sind, passen wir das angezeigte Hitze- und Windrisiko

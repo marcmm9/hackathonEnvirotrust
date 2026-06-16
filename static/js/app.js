@@ -8,6 +8,8 @@ let parksList = [];
 let currentMode = 'select'; // 'select' or 'custom'
 let amortizationChartInstance = null;
 let cashflowChartInstance = null;
+let map = null;
+let markersGroup = null;
 
 // Global helper functions for inline HTML event handlers
 window.formatCurrency = function(val) {
@@ -315,6 +317,10 @@ async function loadParks() {
         // Set coordinates text
         updateSelectedParkCoordinates();
         updateVisualizer();
+        
+        // Initialize map and markers
+        initMap();
+        populateMapMarkers();
         
         // Do NOT run initial simulation automatically on load
         // calculateSimulation();
@@ -806,3 +812,175 @@ function updateRiskBar(id, value) {
         }
     }
 }
+
+/**
+ * Initializes the Germany Map using Leaflet.js
+ */
+function initMap() {
+    const mapContainer = document.getElementById('germany-map');
+    if (!mapContainer || map) return;
+    
+    // Center map on Germany
+    map = L.map('germany-map').setView([51.1657, 10.4515], 6);
+    
+    // Premium dark tile layer
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+        subdomains: 'abcd',
+        maxZoom: 20
+    }).addTo(map);
+    
+    markersGroup = L.layerGroup().addTo(map);
+}
+
+/**
+ * Places glowing pins for all loaded solar parks on the map
+ */
+function populateMapMarkers() {
+    if (!markersGroup || !parksList) return;
+    markersGroup.clearLayers();
+    
+    parksList.forEach((park, index) => {
+        if (!park.lat || !park.lon) return;
+        
+        // Glowing pin dot using divIcon
+        const pinIcon = L.divIcon({
+            className: 'custom-map-pin',
+            html: '<div class="pin-dot"></div>',
+            iconSize: [12, 12],
+            iconAnchor: [6, 6]
+        });
+        
+        const marker = L.marker([park.lat, park.lon], { icon: pinIcon });
+        marker.on('click', () => {
+            showParkMiniDetails(park, index);
+        });
+        markersGroup.addLayer(marker);
+    });
+}
+
+/**
+ * Closes the floating mini detail card on the map
+ */
+window.closeMiniDetails = function() {
+    const card = document.getElementById('map-detail-card');
+    if (card) {
+        card.classList.add('hidden');
+    }
+};
+
+/**
+ * Displays preview metrics and safety score of a clicked solar park
+ */
+window.showParkMiniDetails = async function(park, index) {
+    const card = document.getElementById('map-detail-card');
+    if (!card) return;
+    
+    card.classList.remove('hidden');
+    
+    document.getElementById('detail-title').textContent = park.city ? `Solarpark in ${park.city}` : 'Solarpark';
+    document.getElementById('detail-location').textContent = `${park.postal || ''} | ${park.lat.toFixed(4)}° N, ${park.lon.toFixed(4)}° E`;
+    document.getElementById('detail-area').textContent = `${park.area_ha.toFixed(1)} ha`;
+    document.getElementById('detail-power').textContent = `${park.mastr_mw.toFixed(2)} MW`;
+    
+    // Loading states
+    document.getElementById('detail-revenue').textContent = 'Berechne...';
+    const safetyEl = document.getElementById('detail-safety');
+    safetyEl.textContent = 'Berechne...';
+    safetyEl.className = 'detail-value';
+    
+    // Setup detailed analyze button
+    const analyzeBtn = document.getElementById('btn-detailed-analyze');
+    analyzeBtn.onclick = function() {
+        // Switch to dashboard view
+        showView('dashboard');
+        
+        // Switch mode to select
+        switchMode('select');
+        
+        // Set selection dropdown
+        const selectEl = document.getElementById('park-select');
+        selectEl.value = index;
+        updateSelectedParkCoordinates();
+        updateVisualizer();
+        
+        // Run full simulation
+        calculateSimulation();
+    };
+    
+    try {
+        // Perform a fast 1-year simulation to get first-year revenue and risk profile
+        const response = await fetch('/api/simulate', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                area_ha: park.area_ha,
+                lat: park.lat,
+                lon: park.lon,
+                year: park.year,
+                years: 1, // Only 1 year for lightning-fast estimation
+                purchase_price_per_mw: 800000,
+                elec_price: 0.08,
+                degradation: 0.5,
+                use_future_projections: false,
+                op_cost_mode: 'standard',
+                target_profit: 0
+            })
+        });
+        
+        if (!response.ok) throw new Error('API failure');
+        
+        const data = await response.json();
+        
+        // Show Year 1 estimated revenue
+        if (data.simulation && data.simulation[0]) {
+            document.getElementById('detail-revenue').textContent = formatCurrency(data.simulation[0].revenue);
+        } else {
+            document.getElementById('detail-revenue').textContent = 'k.A.';
+        }
+        
+        // Show inverted risk safety score (where high score is safe/good)
+        if (data.risk_profile) {
+            const safetyScore = data.risk_profile.overall_risk;
+            safetyEl.textContent = `${safetyScore.toFixed(1)}/10`;
+            
+            if (safetyScore >= 7.0) {
+                safetyEl.className = 'detail-value val-positive';
+            } else if (safetyScore >= 4.0) {
+                safetyEl.className = 'detail-value val-orange';
+            } else {
+                safetyEl.className = 'detail-value val-negative';
+            }
+        }
+    } catch (err) {
+        console.error('Error fetching preview details:', err);
+        document.getElementById('detail-revenue').textContent = 'Fehler';
+        safetyEl.textContent = 'Fehler';
+        safetyEl.className = 'detail-value val-negative';
+    }
+};
+
+/**
+ * Switches the active view/screen between Map landing page and detailed Dashboard
+ */
+window.showView = function(viewName) {
+    const landing = document.getElementById('landing-page');
+    const dashboard = document.getElementById('dashboard-page');
+    
+    if (viewName === 'landing') {
+        landing.classList.remove('hidden');
+        dashboard.classList.add('hidden');
+        
+        // Correct Leaflet container sizing when shown
+        if (map) {
+            setTimeout(() => {
+                map.invalidateSize();
+            }, 100);
+        }
+    } else {
+        landing.classList.add('hidden');
+        dashboard.classList.remove('hidden');
+    }
+};
