@@ -1,0 +1,948 @@
+/* ==========================================================================
+   EnviroTrust Solar Dashboard Design System
+   Sleek Minimalist Dark Theme (Zinc / SaaS Aesthetic)
+   ========================================================================== */
+
+/* --- Custom Properties / Design Tokens --- */
+:root {
+    --bg-primary: #09090b;       /* Zinc 950 */
+    --bg-secondary: #0c0c0e;
+    --card-bg: #18181b;          /* Zinc 900 */
+    --card-border: #27272a;      /* Zinc 800 */
+    --card-border-hover: #3f3f46;/* Zinc 700 */
+    
+    --text-primary: #fafafa;     /* Zinc 50 */
+    --text-secondary: #a1a1aa;   /* Zinc 400 */
+    --text-muted: #52525b;       /* Zinc 600 */
+    
+    /* Clean Accents */
+    --color-teal: #06b6d4;
+    --color-emerald: #10b981;    /* ROI / Low Risk */
+    --color-amber: #f59e0b;      /* Warning / Medium Risk */
+    --color-red: #ef4444;        /* Cost / High Risk */
+    
+    --font-heading: 'Outfit', sans-serif;
+    --font-body: 'Inter', sans-serif;
+    
+    --transition-fast: 0.15s ease;
+    --transition-normal: 0.25s ease;
+    
+    --border-radius-sm: 6px;
+    --border-radius-md: 10px;
+    --border-radius-lg: 14px;
+}
+
+/* --- Base & Reset --- */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+    font-family: var(--font-body);
+    font-size: 14px;
+    line-height: 1.5;
+    min-height: 100vh;
+    overflow-x: hidden;
+}
+
+/* --- Scrollbars --- */
+::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+::-webkit-scrollbar-track {
+    background: var(--bg-primary);
+}
+::-webkit-scrollbar-thumb {
+    background: var(--card-border-hover);
+    border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+    background: var(--text-muted);
+}
+
+/* --- Utilities --- */
+.hidden {
+    display: none !important;
+}
+
+.text-center {
+    text-align: center;
+}
+
+.divider {
+    border: 0;
+    height: 1px;
+    background: var(--card-border);
+    margin: 1.25rem 0;
+}
+
+/* --- Layout Container --- */
+.app-container {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 2.5rem 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.75rem;
+}
+
+/* --- Header Section --- */
+.main-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-bottom: 1.25rem;
+    border-bottom: 1px solid var(--card-border);
+}
+
+.logo {
+    font-family: var(--font-heading);
+    font-size: 1.5rem;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+    color: var(--text-primary);
+}
+
+.logo-accent {
+    color: var(--text-secondary);
+    font-weight: 400;
+}
+
+.header-status {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: #18181b;
+    border: 1px solid var(--card-border);
+    padding: 0.4rem 0.8rem;
+    border-radius: 20px;
+}
+
+.status-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background-color: var(--color-emerald);
+}
+
+.header-status p {
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+}
+
+/* --- Card Styles --- */
+.glass-card {
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: var(--border-radius-md);
+    transition: border-color var(--transition-fast);
+}
+
+.glass-card:hover {
+    border-color: var(--card-border-hover);
+}
+
+/* --- Dashboard Grid System --- */
+.dashboard-grid {
+    display: grid;
+    grid-template-columns: 340px 1fr;
+    gap: 1.75rem;
+    align-items: start;
+}
+
+@media (max-width: 1024px) {
+    .dashboard-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* --- Control Panel (Sidebar) --- */
+.control-panel {
+    padding: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+}
+
+.section-title {
+    font-family: var(--font-heading);
+    font-size: 1.15rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 0.25rem;
+}
+
+/* Control Group Mode Toggles */
+.control-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.group-label {
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-muted);
+}
+
+.toggle-buttons {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    background: #09090b;
+    border-radius: var(--border-radius-sm);
+    padding: 3px;
+    border: 1px solid var(--card-border);
+}
+
+.toggle-btn {
+    border: none;
+    background: transparent;
+    color: var(--text-secondary);
+    padding: 0.5rem;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.toggle-btn.active {
+    background: var(--card-border);
+    color: var(--text-primary);
+}
+
+.toggle-btn:hover:not(.active) {
+    color: var(--text-primary);
+}
+
+/* Forms & Inputs */
+.mode-container {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.input-field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+}
+
+.input-field label {
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+}
+
+select, input[type="number"] {
+    background: #09090b;
+    border: 1px solid var(--card-border);
+    border-radius: var(--border-radius-sm);
+    color: var(--text-primary);
+    padding: 0.6rem 0.8rem;
+    font-size: 0.85rem;
+    outline: none;
+    width: 100%;
+    font-family: var(--font-body);
+    transition: border-color var(--transition-fast);
+}
+
+select {
+    cursor: pointer;
+    appearance: none;
+    -webkit-appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%23a1a1aa'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.75rem center;
+    background-size: 1rem;
+    padding-right: 2.25rem;
+}
+
+select option {
+    background-color: var(--card-bg);
+}
+
+select:focus, input[type="number"]:focus {
+    border-color: var(--text-secondary);
+}
+
+.input-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.75rem;
+}
+
+/* Sliders */
+.slider-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.slider-badge {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+input[type="range"] {
+    -webkit-appearance: none;
+    width: 100%;
+    height: 4px;
+    border-radius: 2px;
+    background: var(--card-border);
+    outline: none;
+    cursor: pointer;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: #ffffff;
+    border: 1px solid var(--card-border-hover);
+    cursor: pointer;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+    transition: transform 0.1s ease-in-out;
+}
+
+input[type="range"]::-webkit-slider-thumb:hover {
+    transform: scale(1.15);
+}
+
+/* Action Button */
+.action-btn {
+    border: none;
+    border-radius: var(--border-radius-sm);
+    background: #ffffff;
+    color: #09090b;
+    padding: 0.75rem;
+    font-size: 0.85rem;
+    font-family: var(--font-body);
+    font-weight: 600;
+    cursor: pointer;
+    transition: background var(--transition-fast);
+}
+
+.action-btn:hover {
+    background: #e4e4e7;
+}
+
+.action-btn:active {
+    background: #d4d4d8;
+}
+
+.weather-source-container {
+    margin-top: 0.5rem;
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    text-align: center;
+}
+
+.weather-source-container span {
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
+/* --- Results Panel --- */
+.results-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 1.75rem;
+}
+
+/* KPI Cards Layout */
+.kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+}
+
+.kpi-card {
+    padding: 1.25rem 1.5rem;
+}
+
+.kpi-info h3 {
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-secondary);
+    margin-bottom: 0.4rem;
+}
+
+.kpi-info p {
+    font-family: var(--font-heading);
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+/* Climate Risk Scoreboard */
+.risk-card {
+    padding: 1.5rem;
+}
+
+.risk-container {
+    display: flex;
+    align-items: center;
+    gap: 2.5rem;
+    margin-top: 1rem;
+}
+
+@media (max-width: 768px) {
+    .risk-container {
+        flex-direction: column;
+        align-items: center;
+        gap: 1.5rem;
+    }
+}
+
+.overall-risk-gauge {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 110px;
+    height: 110px;
+    border-radius: 50%;
+    background: #09090b;
+    border: 2px solid var(--card-border);
+    flex-shrink: 0;
+    transition: all var(--transition-normal);
+}
+
+.gauge-value {
+    font-family: var(--font-heading);
+    font-size: 2.2rem;
+    font-weight: 700;
+    line-height: 1;
+}
+
+.gauge-label {
+    font-size: 0.6rem;
+    text-transform: uppercase;
+    font-weight: 600;
+    color: var(--text-muted);
+    margin-top: 2px;
+}
+
+.risk-low {
+    border-color: var(--color-emerald) !important;
+    color: var(--color-emerald) !important;
+}
+
+.risk-medium {
+    border-color: var(--color-amber) !important;
+    color: var(--color-amber) !important;
+}
+
+.risk-high {
+    border-color: var(--color-red) !important;
+    color: var(--color-red) !important;
+}
+
+.individual-risks {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.75rem 2rem;
+    flex-grow: 1;
+    width: 100%;
+}
+
+@media (max-width: 600px) {
+    .individual-risks {
+        grid-template-columns: 1fr;
+    }
+}
+
+.risk-bar-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+}
+
+.risk-bar-label {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+}
+
+.risk-badge {
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 0.05rem 0.35rem;
+    border-radius: 4px;
+}
+
+.risk-badge-low {
+    background: rgba(16, 185, 129, 0.1);
+    color: var(--color-emerald);
+}
+
+.risk-badge-medium {
+    background: rgba(245, 158, 11, 0.1);
+    color: var(--color-amber);
+}
+
+.risk-badge-high {
+    background: rgba(239, 68, 68, 0.1);
+    color: var(--color-red);
+}
+
+.risk-bar-bg {
+    width: 100%;
+    height: 4px;
+    background: var(--card-border);
+    border-radius: 2px;
+    overflow: hidden;
+}
+
+.risk-bar-fill {
+    height: 100%;
+    border-radius: 2px;
+    width: 0%;
+    transition: width var(--transition-normal) ease-in-out;
+}
+
+.bg-low {
+    background: var(--color-emerald);
+}
+
+.bg-medium {
+    background: var(--color-amber);
+}
+
+.bg-high {
+    background: var(--color-red);
+}
+
+.risk-effects-note {
+    margin-top: 1.25rem;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    border-top: 1px solid var(--card-border);
+    padding-top: 0.75rem;
+}
+
+.risk-effects-note span {
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
+/* Charts Grid */
+.charts-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+}
+
+@media (max-width: 1300px) {
+    .charts-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.chart-card {
+    padding: 1.5rem;
+}
+
+.chart-title {
+    font-family: var(--font-heading);
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    border-bottom: 1px solid var(--card-border);
+    padding-bottom: 0.6rem;
+    margin-bottom: 1rem;
+}
+
+.chart-container {
+    position: relative;
+    height: 300px;
+    width: 100%;
+}
+
+/* Detailed Cashflow Table View */
+.table-card {
+    padding: 1.5rem;
+}
+
+.table-scroll {
+    overflow-x: auto;
+    border-radius: var(--border-radius-sm);
+    border: 1px solid var(--card-border);
+}
+
+.cashflow-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.85rem;
+    text-align: left;
+}
+
+.cashflow-table th {
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    font-weight: 600;
+    padding: 0.85rem 1rem;
+    border-bottom: 1px solid var(--card-border);
+}
+
+.cashflow-table td {
+    padding: 0.75rem 1rem;
+    color: var(--text-secondary);
+    border-bottom: 1px solid var(--card-border);
+}
+
+.cashflow-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+.cashflow-table tbody tr:hover {
+    background-color: rgba(255, 255, 255, 0.01);
+}
+
+/* Format utilities for values in table */
+.val-positive {
+    color: var(--color-emerald) !important;
+}
+
+.val-negative {
+    color: var(--color-red) !important;
+}
+
+/* Pulse for loading state */
+.loading-pulse {
+    opacity: 0.6;
+}
+
+/* Coordinates display info under dropdown */
+.coordinates-info {
+    margin-top: 0.5rem;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
+.coordinates-info span {
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
+/* Loading Overlay & Spinner */
+.loading-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(9, 9, 11, 0.75);
+    backdrop-filter: blur(2px);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+    z-index: 100;
+    border-radius: var(--border-radius-md);
+    transition: opacity var(--transition-fast) ease-in-out;
+}
+
+.spinner {
+    width: 28px;
+    height: 28px;
+    border: 2px solid var(--card-border-hover);
+    border-top-color: var(--color-emerald);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.loading-overlay p {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
+/* Custom Checkbox Styling */
+.checkbox-field {
+    display: flex;
+    align-items: center;
+    margin-top: 1rem;
+    margin-bottom: 1rem;
+    user-select: none;
+}
+
+.checkbox-container {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    cursor: pointer;
+    position: relative;
+}
+
+.checkbox-container input {
+    position: absolute;
+    opacity: 0;
+    cursor: pointer;
+    height: 0;
+    width: 0;
+}
+
+.checkmark {
+    width: 18px;
+    height: 18px;
+    background-color: var(--bg-primary);
+    border: 1px solid var(--card-border);
+    border-radius: var(--border-radius-sm);
+    display: inline-block;
+    position: relative;
+    transition: all var(--transition-fast);
+}
+
+.checkbox-container:hover input ~ .checkmark {
+    border-color: var(--card-border-hover);
+}
+
+.checkbox-container input:checked ~ .checkmark {
+    background-color: var(--color-teal);
+    border-color: var(--color-teal);
+}
+
+.checkmark:after {
+    content: "";
+    position: absolute;
+    display: none;
+}
+
+.checkbox-container input:checked ~ .checkmark:after {
+    display: block;
+}
+
+.checkbox-container .checkmark:after {
+    left: 6px;
+    top: 2px;
+    width: 4px;
+    height: 9px;
+    border: solid var(--bg-primary);
+    border-width: 0 2px 2px 0;
+    transform: rotate(45deg);
+}
+
+/* Future warning badge under risk profile */
+.future-badge {
+    margin-top: 0.50rem;
+    padding: 0.4rem 0.6rem;
+    background-color: rgba(245, 158, 11, 0.08);
+    border: 1px solid rgba(245, 158, 11, 0.2);
+    border-radius: var(--border-radius-sm);
+    color: var(--color-amber);
+    font-size: 0.75rem;
+    font-weight: 500;
+    line-height: 1.4;
+    transition: opacity var(--transition-fast) ease-in-out;
+}
+
+/* --- Park Visualizer Card --- */
+.park-visualizer-card {
+    background: var(--bg-primary);
+    border: 1px solid var(--card-border);
+    border-radius: var(--border-radius-md);
+    padding: 1rem;
+    margin-top: 1.25rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    transition: border-color var(--transition-fast);
+}
+
+.park-visualizer-card:hover {
+    border-color: var(--card-border-hover);
+}
+
+.visualizer-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.visualizer-title {
+    font-family: var(--font-heading);
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.maps-link-btn {
+    font-size: 0.75rem;
+    color: var(--color-teal);
+    text-decoration: none;
+    font-weight: 500;
+    padding: 0.25rem 0.5rem;
+    border: 1px solid rgba(6, 182, 212, 0.2);
+    border-radius: var(--border-radius-sm);
+    background: rgba(6, 182, 212, 0.03);
+    transition: all var(--transition-fast);
+}
+
+.maps-link-btn:hover {
+    background: rgba(6, 182, 212, 0.08);
+    border-color: rgba(6, 182, 212, 0.4);
+    color: var(--text-primary);
+}
+
+.canvas-container {
+    background: #09090b; /* Deep contrast background */
+    border: 1px dashed var(--card-border);
+    border-radius: var(--border-radius-sm);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.5rem;
+    position: relative;
+    overflow: hidden;
+}
+
+#park-outline-canvas {
+    display: block;
+    max-width: 100%;
+    height: auto;
+}
+
+/* --- Overheating Warning Card --- */
+.overheat-card {
+    padding: 1.5rem;
+    border: 1px solid rgba(239, 68, 68, 0.2);
+    background: linear-gradient(135deg, rgba(239, 68, 68, 0.05) 0%, rgba(9, 9, 11, 0) 100%);
+    border-radius: var(--border-radius-md);
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    margin-top: 1.5rem;
+    transition: all var(--transition-normal);
+}
+
+.overheat-card:hover {
+    border-color: rgba(239, 68, 68, 0.4);
+    background: linear-gradient(135deg, rgba(239, 68, 68, 0.08) 0%, rgba(9, 9, 11, 0) 100%);
+}
+
+.overheat-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.overheat-icon {
+    font-size: 1.25rem;
+}
+
+.overheat-title {
+    font-family: var(--font-heading);
+    font-size: 1.05rem;
+    font-weight: 600;
+    color: var(--color-red);
+}
+
+.overheat-desc {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    line-height: 1.5;
+}
+
+.overheat-desc strong {
+    color: var(--text-primary);
+}
+
+.overheat-metrics {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin-top: 0.5rem;
+    border-top: 1px solid var(--card-border);
+    padding-top: 0.75rem;
+}
+
+.overheat-metric {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+}
+
+.metric-label {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    font-weight: 600;
+    color: var(--text-muted);
+}
+
+.metric-value {
+    font-family: var(--font-heading);
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--color-red);
+}
+
+/* Premium Info Box for KI Costs explanation */
+.info-box-premium {
+    margin-top: 1rem;
+    padding: 0.85rem 1rem;
+    background: linear-gradient(135deg, rgba(6, 182, 212, 0.05) 0%, rgba(9, 9, 11, 0) 100%);
+    border: 1px solid rgba(6, 182, 212, 0.15);
+    border-radius: var(--border-radius-sm);
+    color: var(--text-secondary);
+    font-size: 0.8rem;
+    line-height: 1.45;
+}
+
+.info-box-premium h4 {
+    color: var(--color-teal);
+    font-family: var(--font-heading);
+    font-size: 0.85rem;
+    font-weight: 600;
+    margin-bottom: 0.4rem;
+}
+
+.info-box-premium ul {
+    list-style-type: none;
+    padding-left: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.45rem;
+}
+
+.info-box-premium li {
+    position: relative;
+    padding-left: 0.75rem;
+}
+
+.info-box-premium li::before {
+    content: "•";
+    color: var(--color-teal);
+    position: absolute;
+    left: 0;
+    font-weight: bold;
+}
+

@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EnviroTrust | Solar Yield Dashboard</title>
+    <!-- Google Fonts: Outfit (headings/metrics) & Inter (body/tables) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Chart.js for High Quality Visualizations -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Custom Style Sheet -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=1.3">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Main Header -->
+        <header class="main-header">
+            <div class="logo">
+                Enviro<span class="logo-accent">Trust</span>
+            </div>
+            <div class="header-status">
+                <span class="status-dot"></span>
+                <p>Solar Yield Engine v1.4</p>
+            </div>
+        </header>
+
+        <!-- Main Dashboard Content Grid -->
+        <main class="dashboard-grid">
+            
+            <!-- Side Panel: Controls & Inputs -->
+            <section class="control-panel glass-card">
+                <h2 class="section-title">Konfiguration</h2>
+                
+                <button class="action-btn" onclick="calculateSimulation()">
+                    Simulation starten
+                </button>
+                <div class="weather-source-container" style="margin-top: 0.25rem; margin-bottom: 0.75rem;">
+                    Wetterdaten: <span id="weather-source">-</span>
+                </div>
+                
+                <hr class="divider" style="margin-top: 0.5rem; margin-bottom: 1rem;">
+                
+                <div class="control-group">
+                    <label class="group-label">Modus</label>
+                    <div class="toggle-buttons">
+                        <button id="btn-select-park" class="toggle-btn active" onclick="switchMode('select')">
+                            Top 100 Parks
+                        </button>
+                        <button id="btn-custom-park" class="toggle-btn" onclick="switchMode('custom')">
+                            Eigener Park
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Mode 1: Select Park Dropdown -->
+                <div id="mode-select-container" class="mode-container">
+                    <div class="input-field">
+                        <label for="park-select">Solarpark auswählen</label>
+                        <select id="park-select" onchange="onParkSelectChange()">
+                            <option value="">-- Solarpark wählen --</option>
+                        </select>
+                    </div>
+                    <div class="coordinates-info">
+                        Koordinaten: <span id="park-coords-val">-</span>
+                    </div>
+                </div>
+
+                <!-- Mode 2: Custom Inputs -->
+                <div id="mode-custom-container" class="mode-container hidden">
+                    <div class="input-grid">
+                        <div class="input-field">
+                            <label for="custom-area">Fläche (ha)</label>
+                            <input type="number" id="custom-area" value="50.0" min="0.1" step="0.1" oninput="updateVisualizer()">
+                        </div>
+                        <div class="input-field">
+                            <label for="custom-year">Baujahr</label>
+                            <input type="number" id="custom-year" value="2023" min="2000" max="2026" oninput="updateVisualizer()">
+                        </div>
+                        <div class="input-field">
+                            <label for="custom-lat">Breitengrad (Lat)</label>
+                            <input type="number" id="custom-lat" value="51.3" min="47.0" max="56.0" step="0.0001" oninput="updateVisualizer()">
+                        </div>
+                        <div class="input-field">
+                            <label for="custom-lon">Längengrad (Lon)</label>
+                            <input type="number" id="custom-lon" value="10.4" min="5.0" max="16.0" step="0.0001" oninput="updateVisualizer()">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Park Layout Visualizer -->
+                <div id="park-visualizer" class="park-visualizer-card hidden">
+                    <div class="visualizer-header">
+                        <span class="visualizer-title">Park-Layout</span>
+                        <a id="google-maps-link" href="#" target="_blank" class="maps-link-btn">
+                            🗺️ Google Maps
+                        </a>
+                    </div>
+                    <div class="canvas-container">
+                        <canvas id="park-outline-canvas" width="280" height="150"></canvas>
+                    </div>
+                </div>
+
+                <hr class="divider">
+
+                <!-- Financial parameters -->
+                <div class="input-field">
+                    <div class="slider-header">
+                        <label for="param-years">Laufzeit</label>
+                        <span id="val-years" class="slider-badge">20 Jahre</span>
+                    </div>
+                    <input type="range" id="param-years" min="5" max="40" value="20" oninput="updateSliderBadge('years', this.value + ' Jahre')">
+                </div>
+
+                <div class="input-field">
+                    <div class="slider-header">
+                        <label for="param-price-mw">Kaufpreis pro MW</label>
+                        <span id="val-price-mw" class="slider-badge">800.000 EUR</span>
+                    </div>
+                    <input type="range" id="param-price-mw" min="400000" max="1500000" step="20000" value="800000" oninput="updateSliderBadge('price-mw', formatCurrency(this.value))">
+                </div>
+
+                <div class="input-field">
+                    <label for="param-target-profit">Wunsch-Reingewinn (EUR)</label>
+                    <input type="number" id="param-target-profit" value="0" min="0" step="50000" placeholder="z. B. 500000">
+                </div>
+
+                <div class="input-field">
+                    <div class="slider-header">
+                        <label for="param-elec-price">Strompreis (kWh)</label>
+                        <span id="val-elec-price" class="slider-badge">0,08 EUR</span>
+                    </div>
+                    <input type="range" id="param-elec-price" min="0.02" max="0.25" step="0.005" value="0.08" oninput="updateSliderBadge('elec-price', formatDecimals(this.value, 3) + ' EUR')">
+                </div>
+
+                <div class="input-field">
+                    <div class="slider-header">
+                        <label for="param-degradation">Degradation / Jahr</label>
+                        <span id="val-degradation" class="slider-badge">0,5 %</span>
+                    </div>
+                    <input type="range" id="param-degradation" min="0.1" max="2.0" step="0.05" value="0.5" oninput="updateSliderBadge('degradation', this.value + ' %')">
+                </div>
+
+                <div class="input-field checkbox-field">
+                    <label class="checkbox-container">
+                        <input type="checkbox" id="param-future-projections">
+                        <span class="checkmark"></span>
+                        Zukunftsprognosen (Klimawandel)
+                    </label>
+                </div>
+
+                <hr class="divider">
+
+                <div class="control-group" style="margin-bottom: 0.50rem;">
+                    <label class="group-label">Betriebskosten (O&M)</label>
+                </div>
+
+                <div class="input-field">
+                    <label for="param-op-cost-mode">Berechnungsmethode</label>
+                    <select id="param-op-cost-mode" onchange="onOpCostModeChange()">
+                        <option value="standard">Standard (Konstante Schätzung)</option>
+                        <option value="custom">Benutzerdefiniert (Kosten & Trend)</option>
+                        <option value="model">KI-gestützte Prognose (Klima + Inflation)</option>
+                    </select>
+                </div>
+
+                <!-- Custom O&M cost inputs -->
+                <div id="op-cost-custom-inputs" class="hidden" style="display: flex; flex-direction: column; gap: 1.25rem; margin-top: 1rem;">
+                    <div class="input-field">
+                        <div class="slider-header">
+                            <label for="param-custom-op-cost">Basis O&M / MW / Jahr</label>
+                            <span id="val-custom-op-cost" class="slider-badge">18.000 EUR</span>
+                        </div>
+                        <input type="range" id="param-custom-op-cost" min="5000" max="40000" step="500" value="18000" oninput="updateSliderBadge('custom-op-cost', formatCurrency(this.value))">
+                    </div>
+                    <div class="input-field">
+                        <div class="slider-header">
+                            <label for="param-custom-op-escalation">Jährliche Anpassung</label>
+                            <span id="val-custom-op-escalation" class="slider-badge">0,0 %</span>
+                        </div>
+                        <input type="range" id="param-custom-op-escalation" min="-5.0" max="10.0" step="0.1" value="0.0" oninput="updateSliderBadge('custom-op-escalation', (this.value >= 0 ? '+' : '') + formatDecimals(this.value, 1) + ' %')">
+                    </div>
+                </div>
+
+                <!-- KI-gestützte cost inputs & explanation -->
+                <div id="op-cost-model-inputs" class="hidden" style="display: flex; flex-direction: column; gap: 1.25rem; margin-top: 1rem;">
+                    <div class="input-field">
+                        <div class="slider-header">
+                            <label for="param-inflation-rate">Durchschnittliche Inflation</label>
+                            <span id="val-inflation-rate" class="slider-badge">2,0 %</span>
+                        </div>
+                        <input type="range" id="param-inflation-rate" min="0.0" max="8.0" step="0.1" value="2.0" oninput="updateSliderBadge('inflation-rate', formatDecimals(this.value, 1) + ' %')">
+                    </div>
+                    <div class="info-box-premium">
+                        <h4>💡 Parameter der Schätzung:</h4>
+                        <ul>
+                            <li><strong>Klimafaktoren:</strong> Zukünftige Hitze- und Windentwicklungen beeinflussen O&M.</li>
+                            <li><strong>Klimarisiken:</strong> Vor-Ort-Faktoren (z. B. Staub, Waldbrand, Flut) erhöhen mechanischen Verschleiß & Versicherungskosten.</li>
+                            <li><strong>Inflation:</strong> Berücksichtigt die schleichende Geldentwertung über die Projektlaufzeit.</li>
+                        </ul>
+                    </div>
+                </div>
+
+            </section>
+
+            <!-- Main Panel: Results & Visualization -->
+            <section class="results-panel">
+                <!-- Loading Overlay -->
+                <div id="loading-overlay" class="loading-overlay hidden">
+                    <div class="spinner"></div>
+                    <p>Führe Simulation und Risikoprüfung aus...</p>
+                </div>
+                
+                <!-- Summary KPI Cards -->
+                <div class="kpi-grid">
+                    <div class="kpi-card glass-card">
+                        <div class="kpi-info">
+                            <h3>Nennleistung (KI)</h3>
+                            <p id="kpi-power" class="kpi-val">- MW</p>
+                        </div>
+                    </div>
+                    
+                    <div class="kpi-card glass-card">
+                        <div class="kpi-info">
+                            <h3>Kaufpreis</h3>
+                            <p id="kpi-cost" class="kpi-val">- EUR</p>
+                        </div>
+                    </div>
+
+                    <div class="kpi-card glass-card">
+                        <div class="kpi-info">
+                            <h3>Return on Invest</h3>
+                            <p id="kpi-roi" class="kpi-val">- %</p>
+                        </div>
+                    </div>
+
+                    <div class="kpi-card glass-card">
+                        <div class="kpi-info">
+                            <h3>Amortisationszeit</h3>
+                            <p id="kpi-payback" class="kpi-val">- Jahre</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Climate Risk Scoreboard -->
+                <div class="risk-card glass-card">
+                    <h2 class="chart-title">Standort-Sicherheitsprofil (Klimasicherheit)</h2>
+                    <div class="risk-container">
+                        <!-- Overall Risk Meter (Inverted to Standortsicherheit) -->
+                        <div class="overall-risk-gauge">
+                            <div class="gauge-value" id="risk-overall-val">0.0</div>
+                            <div class="gauge-label">Standortsicherheit</div>
+                        </div>
+                        
+                        <!-- Individual Risks Grid (Inverted to Safety/Quality) -->
+                        <div class="individual-risks">
+                            <!-- Air Quality -->
+                            <div class="risk-bar-group">
+                                <div class="risk-bar-label">
+                                    <span>Luftqualität</span>
+                                    <span id="risk-air-val" class="risk-badge">-</span>
+                                </div>
+                                <div class="risk-bar-bg">
+                                    <div class="risk-bar-fill" id="risk-air-bar"></div>
+                                </div>
+                            </div>
+                            
+                            <!-- Flood Safety -->
+                            <div class="risk-bar-group">
+                                <div class="risk-bar-label">
+                                    <span>Hochwassersicherheit</span>
+                                    <span id="risk-flood-val" class="risk-badge">-</span>
+                                </div>
+                                <div class="risk-bar-bg">
+                                    <div class="risk-bar-fill" id="risk-flood-bar"></div>
+                                </div>
+                            </div>
+ 
+                            <!-- Wildfire Safety -->
+                            <div class="risk-bar-group">
+                                <div class="risk-bar-label">
+                                    <span>Waldbrandsicherheit</span>
+                                    <span id="risk-wildfire-val" class="risk-badge">-</span>
+                                </div>
+                                <div class="risk-bar-bg">
+                                    <div class="risk-bar-fill" id="risk-wildfire-bar"></div>
+                                </div>
+                            </div>
+ 
+                            <!-- Wind Safety -->
+                            <div class="risk-bar-group">
+                                <div class="risk-bar-label">
+                                    <span>Sturmsicherheit</span>
+                                    <span id="risk-wind-val" class="risk-badge">-</span>
+                                </div>
+                                <div class="risk-bar-bg">
+                                    <div class="risk-bar-fill" id="risk-wind-bar"></div>
+                                </div>
+                            </div>
+ 
+                            <!-- Heat Safety -->
+                            <div class="risk-bar-group">
+                                <div class="risk-bar-label">
+                                    <span>Hitzesicherheit</span>
+                                    <span id="risk-heat-val" class="risk-badge">-</span>
+                                </div>
+                                <div class="risk-bar-bg">
+                                    <div class="risk-bar-fill" id="risk-heat-bar"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="risk-effects-note">
+                        Das Sicherheitsprofil beeinflusst die Investitionsrechnung (z.B. O&M-Kosten und Degradation). Quelle: <span id="risk-source">-</span>
+                        <div id="future-projections-badge" class="future-badge hidden">
+                            ⚠️ Zukunftsprognosen (Szenario RCP 8.5) einbezogen – Sicherheitswerte wurden an langfristige Klimaprognosen angepasst.
+                        </div>
+                    </div>
+                </div>
+ 
+                <!-- Overheating Warning Card -->
+                <div id="overheat-warning-card" class="overheat-card glass-card hidden">
+                    <div class="overheat-header">
+                        <span class="overheat-icon">⚠️</span>
+                        <h3 class="overheat-title">Warnung: Thermische Überhitzung</h3>
+                    </div>
+                    <p class="overheat-desc">
+                        Historische Wetterdaten (2023) zeigen, dass dieser Standort an <strong id="overheat-hours">-</strong> Stunden kritisch überhitzt ist, da kühlender Wind fehlte (Zelltemperatur &gt; 55°C bei &lt; 2,0 m/s Wind).
+                    </p>
+                    <div class="overheat-metrics">
+                        <div class="overheat-metric">
+                            <span class="metric-label">Jährlicher Verlust</span>
+                            <span id="overheat-cost-annual" class="metric-value">- EUR</span>
+                        </div>
+                        <div class="overheat-metric">
+                            <span class="metric-label">Verlust über Laufzeit</span>
+                            <span id="overheat-cost-total" class="metric-value">- EUR</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Charts Container Grid -->
+                <div class="charts-grid">
+                    <div class="chart-card glass-card">
+                        <h2 class="chart-title">Amortisationskurve (Gewinnverlauf)</h2>
+                        <div class="chart-container">
+                            <canvas id="amortizationChart"></canvas>
+                        </div>
+                    </div>
+
+                    <div class="chart-card glass-card">
+                        <h2 class="chart-title">Jährlicher Cashflow (Einnahmen vs. Kosten)</h2>
+                        <div class="chart-container">
+                            <canvas id="cashflowChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Detailed Cashflow Table View -->
+                <div class="table-card glass-card">
+                    <h2 class="chart-title">Detaillierter Cashflow-Plan</h2>
+                    <div class="table-scroll">
+                        <table class="cashflow-table">
+                            <thead>
+                                <tr>
+                                    <th>Jahr</th>
+                                    <th>Produktion</th>
+                                    <th>Einnahmen</th>
+                                    <th>Betriebskosten</th>
+                                    <th>Reingewinn</th>
+                                    <th>Kumulativer Gewinn</th>
+                                </tr>
+                            </thead>
+                            <tbody id="table-body">
+                                <tr>
+                                    <td colspan="6" class="text-center">Bitte starten Sie die Simulation, um Daten anzuzeigen.</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+            </section>
+        </main>
+    </div>
+
+    <!-- Application Script -->
+    <script src="{{ url_for('static', filename='js/app.js') }}?v=1.3"></script>
+</body>
+</html>
