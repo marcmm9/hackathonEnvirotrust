@@ -257,6 +257,32 @@ if os.path.exists(DATA_PATH):
 else:
     parks = []
 
+# Pre-compute benchmark data for ROI comparison across all parks
+# Uses the model to predict MW and a simplified specific yield based on latitude
+# (no weather API calls needed – fast enough for startup)
+benchmark_park_data = []
+if model and parks:
+    print(f"[Benchmark] Berechne Benchmark-Daten für {len(parks)} Parks...")
+    for park in parks:
+        try:
+            features = pd.DataFrame(
+                [[park['area_ha'], park['lat'], park['lon'], park.get('year', 2023)]],
+                columns=['area_ha', 'lat', 'lon', 'year']
+            )
+            park_mw = float(model.predict(features)[0])
+            # Spezifischer Ertrag basierend auf Breitengrad (Süddeutschland ~1050, Nord ~900 kWh/kWp)
+            est_specific_yield = 1100.0 - 4.0 * (park['lat'] - 47.0)
+            est_annual_kwh = park_mw * 1000.0 * est_specific_yield
+            benchmark_park_data.append({
+                'city': park.get('city', 'Unbekannt'),
+                'pred_mw': park_mw,
+                'est_annual_kwh': est_annual_kwh,
+                'est_specific_yield': est_specific_yield
+            })
+        except Exception as e:
+            print(f"[Benchmark] Fehler bei Park {park.get('city', '?')}: {e}")
+    print(f"[Benchmark] {len(benchmark_park_data)} Parks erfolgreich vorberechnet.")
+
 @app.route('/')
 def index():
     return render_template('index.html')
@@ -632,6 +658,52 @@ def simulate():
         "daily_covenant_curve": daily_data
     }
 
+    # Benchmark-Vergleich: ROI für alle Parks mit den gleichen finanziellen Parametern berechnen
+    benchmark_rois = []
+    if benchmark_park_data:
+        for bd in benchmark_park_data:
+            bm_cost = bd['pred_mw'] * purchase_price_per_mw
+            if bm_cost <= 0:
+                continue
+            bm_cum_net = 0.0
+            bm_cap_mult = 1.0
+            for y_i in range(1, years + 1):
+                bm_cap_mult *= (1.0 - degradation)
+                bm_prod = bd['est_annual_kwh'] * bm_cap_mult
+                bm_rev = bm_prod * elec_price
+                bm_op = bd['pred_mw'] * 18000.0  # Standard O&M
+                bm_cum_net += (bm_rev - bm_op)
+            bm_roi = (bm_cum_net / bm_cost) * 100.0
+            benchmark_rois.append(bm_roi)
+    
+    # Benchmark-Statistiken
+    if benchmark_rois:
+        sorted_rois = sorted(benchmark_rois)
+        avg_roi_benchmark = sum(sorted_rois) / len(sorted_rois)
+        median_idx = len(sorted_rois) // 2
+        median_roi_benchmark = sorted_rois[median_idx]
+        min_roi_benchmark = sorted_rois[0]
+        max_roi_benchmark = sorted_rois[-1]
+        # Perzentil-Rang des aktuellen Parks (wie viel % der Parks haben ein schlechteres ROI)
+        count_below = sum(1 for r in sorted_rois if r < roi)
+        percentile_rank = (count_below / len(sorted_rois)) * 100.0
+    else:
+        avg_roi_benchmark = 0.0
+        median_roi_benchmark = 0.0
+        min_roi_benchmark = 0.0
+        max_roi_benchmark = 0.0
+        percentile_rank = 50.0
+    
+    benchmark_info = {
+        "avg_roi": round(avg_roi_benchmark, 1),
+        "median_roi": round(median_roi_benchmark, 1),
+        "min_roi": round(min_roi_benchmark, 1),
+        "max_roi": round(max_roi_benchmark, 1),
+        "percentile_rank": round(percentile_rank, 1),
+        "park_count": len(benchmark_rois),
+        "current_roi": round(roi, 1)
+    }
+
     response = {
         "pred_mw": pred_mw,
         "total_cost": total_cost,
@@ -648,7 +720,8 @@ def simulate():
         "simulation": sim_data,
         "future_projections_active": use_future_projections,
         "rcp_scenario": rcp_scenario,
-        "covenants_info": covenants_info
+        "covenants_info": covenants_info,
+        "benchmark": benchmark_info
     }
 
     return jsonify(response)

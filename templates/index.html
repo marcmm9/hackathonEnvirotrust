@@ -54,7 +54,7 @@
                                 <span class="detail-value" id="detail-power">- MW</span>
                             </div>
                             <div class="detail-metric">
-                                <span class="detail-label">Umsatz / Jahr (Est.)</span>
+                                <span class="detail-label">Gesamtumsatz 35J (Est.)</span>
                                 <span class="detail-value text-emerald" id="detail-revenue">- EUR</span>
                             </div>
                             <div class="detail-metric">
@@ -293,6 +293,39 @@
                     <p>Führe Simulation und Risikoprüfung aus...</p>
                 </div>
                 
+                <!-- ROI Benchmark Comparison Banner -->
+                <div id="benchmark-banner" class="benchmark-banner glass-card hidden">
+                    <div class="benchmark-header">
+                        <div class="benchmark-title-group">
+                            <h3 class="benchmark-title">ROI-Standortvergleich</h3>
+                            <span class="benchmark-subtitle">Ihr Standort vs. <span id="benchmark-park-count">0</span> deutsche Solarparks</span>
+                        </div>
+                        <div id="benchmark-verdict" class="benchmark-verdict">-</div>
+                    </div>
+                    <div class="benchmark-comparison">
+                        <div class="benchmark-your-roi">
+                            <span class="benchmark-label">Ihr ROI</span>
+                            <span id="benchmark-your-val" class="benchmark-big-val">- %</span>
+                        </div>
+                        <div class="benchmark-vs">vs.</div>
+                        <div class="benchmark-avg-roi">
+                            <span class="benchmark-label">⌀ Durchschnitt</span>
+                            <span id="benchmark-avg-val" class="benchmark-big-val benchmark-avg-color">- %</span>
+                        </div>
+                    </div>
+                    <div class="benchmark-bar-container">
+                        <div class="benchmark-bar-bg">
+                            <div class="benchmark-bar-fill" id="benchmark-percentile-bar"></div>
+                            <div class="benchmark-bar-marker" id="benchmark-bar-marker"></div>
+                        </div>
+                        <div class="benchmark-bar-labels">
+                            <span id="benchmark-min-label">Min: - %</span>
+                            <span id="benchmark-percentile-label">Perzentil: - %</span>
+                            <span id="benchmark-max-label">Max: - %</span>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Summary KPI Cards -->
                 <div class="kpi-grid">
                     <div class="kpi-card glass-card">

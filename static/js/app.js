@@ -524,6 +524,11 @@ async function calculateSimulation() {
         // 2. Render KPIs
         updateKPIs(data);
         
+        // 2b. Render Benchmark
+        if (data.benchmark) {
+            updateBenchmark(data.benchmark);
+        }
+        
         // 3. Render Charts
         renderCharts(data.simulation);
         if (data.covenants_info) {
@@ -592,6 +597,73 @@ function updateKPIs(data) {
         paybackEl.textContent = 'Nie';
         paybackEl.className = 'val-negative';
     }
+}
+
+/**
+ * Renders the ROI benchmark comparison banner
+ */
+function updateBenchmark(benchmark) {
+    const banner = document.getElementById('benchmark-banner');
+    if (!banner || !benchmark) return;
+    
+    banner.classList.remove('hidden');
+    
+    // Park count
+    document.getElementById('benchmark-park-count').textContent = benchmark.park_count;
+    
+    // Your ROI value
+    const yourValEl = document.getElementById('benchmark-your-val');
+    yourValEl.textContent = `${formatDecimals(benchmark.current_roi, 1)} %`;
+    
+    // Average ROI
+    document.getElementById('benchmark-avg-val').textContent = `${formatDecimals(benchmark.avg_roi, 1)} %`;
+    
+    // Color-code your ROI
+    const diff = benchmark.current_roi - benchmark.avg_roi;
+    yourValEl.classList.remove('val-positive', 'val-negative');
+    if (diff > 0) {
+        yourValEl.classList.add('val-positive');
+    } else if (diff < -10) {
+        yourValEl.classList.add('val-negative');
+    }
+    
+    // Verdict badge
+    const verdictEl = document.getElementById('benchmark-verdict');
+    verdictEl.classList.remove('verdict-good', 'verdict-ok', 'verdict-bad');
+    
+    if (benchmark.percentile_rank >= 66) {
+        verdictEl.textContent = '🟢 Überdurchschnittlich';
+        verdictEl.classList.add('verdict-good');
+    } else if (benchmark.percentile_rank >= 33) {
+        verdictEl.textContent = '🟡 Durchschnittlich';
+        verdictEl.classList.add('verdict-ok');
+    } else {
+        verdictEl.textContent = '🔴 Unterdurchschnittlich';
+        verdictEl.classList.add('verdict-bad');
+    }
+    
+    // Percentile bar
+    const barFill = document.getElementById('benchmark-percentile-bar');
+    const barMarker = document.getElementById('benchmark-bar-marker');
+    if (barFill) {
+        barFill.style.width = `${Math.min(100, Math.max(0, benchmark.percentile_rank))}%`;
+        barFill.classList.remove('bar-good', 'bar-ok', 'bar-bad');
+        if (benchmark.percentile_rank >= 66) {
+            barFill.classList.add('bar-good');
+        } else if (benchmark.percentile_rank >= 33) {
+            barFill.classList.add('bar-ok');
+        } else {
+            barFill.classList.add('bar-bad');
+        }
+    }
+    if (barMarker) {
+        barMarker.style.left = `${Math.min(100, Math.max(0, benchmark.percentile_rank))}%`;
+    }
+    
+    // Labels
+    document.getElementById('benchmark-min-label').textContent = `Min: ${formatDecimals(benchmark.min_roi, 1)} %`;
+    document.getElementById('benchmark-percentile-label').textContent = `Perzentil: ${formatDecimals(benchmark.percentile_rank, 0)} %`;
+    document.getElementById('benchmark-max-label').textContent = `Max: ${formatDecimals(benchmark.max_roi, 1)} %`;
 }
 
 /**
@@ -1021,9 +1093,10 @@ function showMiniDetails(park, index) {
     const estPower = (park.capacity_mw || park.area_ha * 0.6).toFixed(1);
     document.getElementById('detail-power').textContent = `~${estPower} MW`;
     
-    // Rough revenue estimate
-    const estRevenue = estPower * 1000 * 950 * 0.08; // kWp * spec_yield * elec_price
-    document.getElementById('detail-revenue').textContent = `~${formatCurrency(estRevenue)}`;
+    // 35-year total revenue estimate
+    const annualRevenue = estPower * 1000 * 950 * 0.08; // kWp * spec_yield * elec_price
+    const totalRevenue35 = annualRevenue * 35;
+    document.getElementById('detail-revenue').textContent = `~${formatCurrency(totalRevenue35)}`;
     
     document.getElementById('detail-safety').textContent = '-';
     
