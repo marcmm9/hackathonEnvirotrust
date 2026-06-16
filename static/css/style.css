@@ -946,3 +946,82 @@ input[type="range"]::-webkit-slider-thumb:hover {
     font-weight: bold;
 }
 
+/* --- Covenant Warning Card --- */
+.covenant-card {
+    padding: 1.5rem;
+    border: 1px solid rgba(239, 68, 68, 0.25);
+    background: linear-gradient(135deg, rgba(239, 68, 68, 0.06) 0%, rgba(9, 9, 11, 0) 100%);
+    border-radius: var(--border-radius-md);
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    margin-top: 1.5rem;
+    transition: all var(--transition-normal);
+}
+
+.covenant-card:hover {
+    border-color: rgba(239, 68, 68, 0.45);
+    background: linear-gradient(135deg, rgba(239, 68, 68, 0.09) 0%, rgba(9, 9, 11, 0) 100%);
+}
+
+.covenant-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.covenant-icon {
+    font-size: 1.25rem;
+}
+
+.covenant-title {
+    font-family: var(--font-heading);
+    font-size: 1.05rem;
+    font-weight: 600;
+    color: var(--color-red);
+}
+
+.covenant-desc {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    line-height: 1.5;
+}
+
+.covenant-desc strong {
+    color: var(--text-primary);
+}
+
+.covenant-metrics {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin-top: 0.5rem;
+    border-top: 1px solid var(--card-border);
+    padding-top: 0.75rem;
+}
+
+.covenant-metric {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+}
+
+/* Full Width Card layout */
+.chart-card.full-width {
+    grid-column: 1 / -1;
+}
+
+/* Status Badges */
+.status-badge {
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 0.15rem 0.45rem;
+    border-radius: 4px;
+    display: inline-block;
+}
+
+.status-verified {
+    background: rgba(16, 185, 129, 0.1);
+    color: var(--color-emerald);
+}
+

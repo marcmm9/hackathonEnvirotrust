@@ -365,6 +365,18 @@ def simulate():
     total_cost = pred_mw * purchase_price_per_mw
     op_cost_per_mw = 18000.0 * om_multiplier  # Jährliche Betriebskosten pro MW in EUR (angepasst durch Risikofaktoren)
     
+    # Bank covenants configurations
+    capex_bank = pred_mw * 600000.0
+    loan_bank = capex_bank * 0.75
+    interest_rate = 0.04
+    amortization_years = 20
+    opex_annual_bank = pred_mw * 1000.0 * 12.0 # 12 EUR / kWp / year
+    
+    if loan_bank > 0:
+        annuity_bank = loan_bank * (interest_rate * (1 + interest_rate)**amortization_years) / ((1 + interest_rate)**amortization_years - 1)
+    else:
+        annuity_bank = 0.0
+    
     future_projs = get_future_weather_projections(lat, lon) if (use_future_projections or op_cost_mode == 'model') else []
     proj_by_year = {p['year']: p for p in future_projs}
     
@@ -415,13 +427,23 @@ def simulate():
         
         cum_net_profit += net_profit
         
+        # DSCR calculation
+        annuity = annuity_bank if y_idx <= 20 else 0.0
+        cfads = revenue - opex_annual_bank
+        dscr = cfads / annuity if annuity > 0 else 99.99
+        covenant_breached = bool(annuity > 0 and dscr < 1.20)
+        
         sim_data.append({
             "year": y_idx,
             "production_mwh": float(production_kwh / 1000.0),
             "revenue": float(revenue),
             "op_cost": float(op_cost),
             "net_profit": float(net_profit),
-            "cum_profit": float(cum_net_profit - total_cost)
+            "cum_profit": float(cum_net_profit - total_cost),
+            "dscr": float(dscr),
+            "annuity": float(annuity),
+            "opex_bank": float(opex_annual_bank),
+            "covenant_breached": covenant_breached
         })
         
         if payback_year is None and cum_net_profit >= (total_cost + target_profit):
@@ -514,6 +536,95 @@ def simulate():
         "should_warn": overheat_hours > 0
     }
 
+    # Determine worst year for active loan (y_idx <= 20)
+    active_loan_years = [d for d in sim_data if d['year'] <= 20]
+    if active_loan_years:
+        worst_year_data = min(active_loan_years, key=lambda x: x['dscr'])
+        worst_y_idx = worst_year_data['year']
+        worst_year_dscr = worst_year_data['dscr']
+    else:
+        worst_y_idx = 1
+        worst_year_dscr = 99.99
+        
+    # Get worst year's specific multipliers
+    worst_capacity_multiplier = 1.0
+    
+    # Recalculate capacity_multiplier up to worst_y_idx
+    temp_cap_mult = 1.0
+    for y_i in range(1, worst_y_idx + 1):
+        sim_year = year + y_i - 1
+        y_degr = adjusted_degradation
+        if (use_future_projections or op_cost_mode == 'model') and sim_year in proj_by_year:
+            proj = proj_by_year[sim_year]
+            if use_future_projections:
+                extreme_wind_days = proj.get('extreme_wind_speed_days_rcp85', 10.0)
+                wind_excess = max(0.0, extreme_wind_days - 10.0)
+                y_degr = adjusted_degradation + (0.0002 * wind_excess)
+        temp_cap_mult *= (1.0 - y_degr)
+    
+    # Yield multiplier for worst year
+    worst_year_yield_multiplier = 1.0
+    sim_year = year + worst_y_idx - 1
+    if (use_future_projections or op_cost_mode == 'model') and sim_year in proj_by_year:
+        proj = proj_by_year[sim_year]
+        if use_future_projections:
+            heatwaves = proj.get('heatwaves_rcp85', 0)
+            worst_year_yield_multiplier = max(0.5, 1.0 - (0.008 * heatwaves))
+
+    # Simulate the worst year daily
+    daily_data = []
+    cum_rev = 0.0
+    
+    # Compute the hourly outputs
+    hourly_outputs = []
+    for hour_data in hourly_weather:
+        w_code = hour_data['weather_code']
+        rad = hour_data['radiation']
+        temp = hour_data['temp']
+        wind = hour_data['wind']
+        
+        if check_wetter_ausfall(w_code) or rad <= 0:
+            hourly_outputs.append(0.0)
+            continue
+            
+        t_cell = berechne_zell_temperatur(temp, rad, wind)
+        wirkungsgrad_pen = berechne_hitze_wirkungsgrad(t_cell, wind)
+        rohleistung_pen = (pred_mw * 1000.0) * (rad / 1000.0) * wirkungsgrad_pen * soiling_loss_factor
+        output_pen = min(rohleistung_pen, pred_mw * 1000.0 * 0.95)
+        hourly_outputs.append(output_pen)
+        
+    # Calculate daily totals
+    for d in range(1, 366):
+        day_start = (d - 1) * 24
+        day_end = min(8760, d * 24)
+        day_prod_kwh = sum(hourly_outputs[day_start:day_end]) * temp_cap_mult * worst_year_yield_multiplier
+        day_rev = day_prod_kwh * elec_price
+        
+        cum_rev += day_rev
+        cum_opex = (opex_annual_bank / 365.0) * d
+        cum_cashflow = cum_rev - cum_opex
+        cum_debt_service = (annuity_bank / 365.0) * d
+        target_liquidity = 1.20 * cum_debt_service
+        
+        daily_data.append({
+            "day": d,
+            "cum_cashflow": float(cum_cashflow),
+            "target_liquidity": float(target_liquidity),
+            "is_breached": bool(cum_cashflow < target_liquidity)
+        })
+        
+    covenants_info = {
+        "capex_bank": capex_bank,
+        "loan_bank": loan_bank,
+        "annuity_bank": annuity_bank,
+        "opex_annual_bank": opex_annual_bank,
+        "has_covenant_breach": any(d['covenant_breached'] for d in sim_data),
+        "worst_year_idx": worst_y_idx,
+        "worst_year_simulated": int(year + worst_y_idx - 1),
+        "worst_year_dscr": float(worst_year_dscr),
+        "daily_covenant_curve": daily_data
+    }
+
     response = {
         "pred_mw": pred_mw,
         "total_cost": total_cost,
@@ -528,7 +639,8 @@ def simulate():
         "risk_profile": inverted_risk_profile,
         "overheat_info": overheat_info,
         "simulation": sim_data,
-        "future_projections_active": use_future_projections
+        "future_projections_active": use_future_projections,
+        "covenants_info": covenants_info
     }
 
     return jsonify(response)

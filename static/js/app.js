@@ -8,6 +8,7 @@ let parksList = [];
 let currentMode = 'select'; // 'select' or 'custom'
 let amortizationChartInstance = null;
 let cashflowChartInstance = null;
+let covenantChartInstance = null;
 
 // Global helper functions for inline HTML event handlers
 window.formatCurrency = function(val) {
@@ -440,11 +441,33 @@ async function calculateSimulation() {
             }
         }
         
+        // Update covenant warning card
+        const covenantCard = document.getElementById('covenant-warning-card');
+        if (covenantCard) {
+            const covInfo = data.covenants_info;
+            if (covInfo && covInfo.has_covenant_breach) {
+                const worstYearData = data.simulation[covInfo.worst_year_idx - 1];
+                const cfads = worstYearData.revenue - covInfo.opex_annual_bank;
+                const gap = Math.max(0, 1.20 * covInfo.annuity_bank - cfads);
+                
+                document.getElementById('covenant-year').textContent = covInfo.worst_year_simulated;
+                document.getElementById('covenant-dscr-val').textContent = formatDecimals(covInfo.worst_year_dscr, 2);
+                document.getElementById('covenant-annuity').textContent = formatCurrency(covInfo.annuity_bank);
+                document.getElementById('covenant-liquidity-gap').textContent = formatCurrency(gap);
+                covenantCard.classList.remove('hidden');
+            } else {
+                covenantCard.classList.add('hidden');
+            }
+        }
+        
         // 2. Render KPIs
         updateKPIs(data);
         
         // 3. Render Charts
         renderCharts(data.simulation);
+        if (data.covenants_info) {
+            renderCovenantChart(data.covenants_info);
+        }
         
         // 4. Render Cashflow Table
         renderTable(data.simulation);
@@ -706,6 +729,34 @@ function renderTable(simulationData) {
         tdCost.textContent = formatCurrency(row.op_cost);
         tr.appendChild(tdCost);
         
+        // DSCR
+        const tdDscr = document.createElement('td');
+        if (row.annuity > 0) {
+            tdDscr.textContent = formatDecimals(row.dscr, 2);
+            tdDscr.style.fontWeight = '600';
+            if (row.dscr < 1.20) {
+                tdDscr.className = 'val-negative';
+            } else {
+                tdDscr.className = 'val-positive';
+            }
+        } else {
+            tdDscr.textContent = 'N/A';
+        }
+        tr.appendChild(tdDscr);
+        
+        // Covenant-Status
+        const tdStatus = document.createElement('td');
+        if (row.annuity > 0) {
+            if (row.covenant_breached) {
+                tdStatus.innerHTML = '<span class="status-badge status-verified" style="background: rgba(239, 68, 68, 0.1); color: var(--color-red);">✗ Verstoß</span>';
+            } else {
+                tdStatus.innerHTML = '<span class="status-badge status-verified">✓ Eingehalten</span>';
+            }
+        } else {
+            tdStatus.innerHTML = '<span class="status-badge status-verified" style="background: rgba(255, 255, 255, 0.05); color: var(--text-muted);">Schuldenfrei</span>';
+        }
+        tr.appendChild(tdStatus);
+        
         // Net Profit (Reingewinn)
         const tdNet = document.createElement('td');
         tdNet.textContent = formatCurrency(row.net_profit);
@@ -805,4 +856,92 @@ function updateRiskBar(id, value) {
             barFill.classList.add('bg-high'); // Red
         }
     }
+}
+
+/**
+ * Renders the daily cumulative cashflow vs required debt coverage limit
+ */
+function renderCovenantChart(covenantsInfo) {
+    const ctx = document.getElementById('covenantChart').getContext('2d');
+    if (covenantChartInstance) {
+        covenantChartInstance.destroy();
+    }
+    
+    const days = covenantsInfo.daily_covenant_curve.map(d => `Tag ${d.day}`);
+    const cashflowData = covenantsInfo.daily_covenant_curve.map(d => d.cum_cashflow);
+    const targetData = covenantsInfo.daily_covenant_curve.map(d => d.target_liquidity);
+    
+    document.getElementById('covenant-chart-year').textContent = covenantsInfo.worst_year_simulated;
+    
+    covenantChartInstance = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: days,
+            datasets: [
+                {
+                    label: 'Kumulierter Cashflow (Umsatz - OpEx)',
+                    data: cashflowData,
+                    borderColor: '#06b6d4',
+                    borderWidth: 2,
+                    fill: false,
+                    pointRadius: 0,
+                    tension: 0.1
+                },
+                {
+                    label: 'Geforderte Liquidität (1.20 * Schuldendienst)',
+                    data: targetData,
+                    borderColor: '#ef4444',
+                    borderWidth: 1.5,
+                    borderDash: [5, 5],
+                    fill: false,
+                    pointRadius: 0,
+                    tension: 0.1
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'top',
+                    labels: {
+                        color: '#fafafa',
+                        font: { family: 'Inter', size: 11 }
+                    }
+                },
+                tooltip: {
+                    mode: 'index',
+                    intersect: false,
+                    callbacks: {
+                        label: function(context) {
+                            return `${context.dataset.label}: ${formatCurrency(context.parsed.y)}`;
+                        }
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    grid: { color: '#27272a', drawTicks: false },
+                    ticks: {
+                        color: '#a1a1aa',
+                        font: { family: 'Inter', size: 10 },
+                        maxTicksLimit: 12
+                    }
+                },
+                y: {
+                    grid: { color: '#27272a', drawTicks: false },
+                    ticks: {
+                        color: '#a1a1aa',
+                        font: { family: 'Inter', size: 11 },
+                        callback: function(value) {
+                            if (value >= 1e6) return (value / 1e6).toFixed(1) + ' Mio. €';
+                            if (value <= -1e6) return (value / 1e6).toFixed(1) + ' Mio. €';
+                            return value.toLocaleString('de-DE') + ' €';
+                        }
+                    }
+                }
+            }
+        }
+    });
 }

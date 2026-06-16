@@ -340,6 +340,27 @@
                     </div>
                 </div>
 
+                <!-- Covenant Warning Card -->
+                <div id="covenant-warning-card" class="covenant-card glass-card hidden">
+                    <div class="covenant-header">
+                        <span class="covenant-icon">🚨</span>
+                        <h3 class="covenant-title">Kredit-Covenant-Verstoß (DSCR)</h3>
+                    </div>
+                    <p class="covenant-desc">
+                        <strong>Kreditverstoß-Warnung:</strong> Der simulierte Cashflow fällt im simulierten Zukunftsjahr (<strong id="covenant-year">-</strong>) unter den geforderten Mindest-DSCR von <strong>1,20</strong>. Jährlicher DSCR: <strong id="covenant-dscr-val">-</strong>.
+                    </p>
+                    <div class="covenant-metrics">
+                        <div class="covenant-metric">
+                            <span class="metric-label">Jährliche Annuität (Schuldendienst)</span>
+                            <span id="covenant-annuity" class="metric-value">- EUR</span>
+                        </div>
+                        <div class="covenant-metric">
+                            <span class="metric-label">Zusätzliche Liquiditätsdeckung</span>
+                            <span id="covenant-liquidity-gap" class="metric-value">- EUR</span>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Charts Container Grid -->
                 <div class="charts-grid">
                     <div class="chart-card glass-card">
@@ -357,6 +378,14 @@
                     </div>
                 </div>
 
+                <!-- Covenants Stress Test Chart (Full Width) -->
+                <div class="chart-card glass-card full-width" style="margin-top: 1.5rem; margin-bottom: 1.5rem;">
+                    <h2 class="chart-title">Liquiditätsverlauf vs. Banken-Covenant (Krisenjahr <span id="covenant-chart-year">-</span>)</h2>
+                    <div class="chart-container" style="height: 320px;">
+                        <canvas id="covenantChart"></canvas>
+                    </div>
+                </div>
+
                 <!-- Detailed Cashflow Table View -->
                 <div class="table-card glass-card">
                     <h2 class="chart-title">Detaillierter Cashflow-Plan</h2>
@@ -368,13 +397,58 @@
                                     <th>Produktion</th>
                                     <th>Einnahmen</th>
                                     <th>Betriebskosten</th>
+                                    <th>DSCR</th>
+                                    <th>Covenant-Status</th>
                                     <th>Reingewinn</th>
                                     <th>Kumulativer Gewinn</th>
                                 </tr>
                             </thead>
                             <tbody id="table-body">
                                 <tr>
-                                    <td colspan="6" class="text-center">Bitte starten Sie die Simulation, um Daten anzuzeigen.</td>
+                                    <td colspan="8" class="text-center">Bitte starten Sie die Simulation, um Daten anzuzeigen.</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Sourcing Registry Section (Audit-Registry) -->
+                <div class="table-card glass-card" style="margin-top: 1.5rem;">
+                    <h2 class="chart-title">Datenquellen & Revisionssicherheit (Audit-Registry)</h2>
+                    <div class="table-scroll">
+                        <table class="cashflow-table">
+                            <thead>
+                                <tr>
+                                    <th>Datenkategorie</th>
+                                    <th>Zertifizierte Quelle</th>
+                                    <th>Verwendung / Zweck</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><strong>Technische Asset-Stammdaten</strong></td>
+                                    <td>Marktstammdatenregister (MaStR) der BNetzA</td>
+                                    <td>Anlagenleistung (MWp), Inbetriebnahmejahr, Koordinaten und Modulfläche</td>
+                                    <td><span class="status-badge status-verified">✓ Verifiziert</span></td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Klimadaten & Gefahrenstufen</strong></td>
+                                    <td>EnviroTrust API & Copernicus CDS (CMIP6)</td>
+                                    <td>Historische Zeitreihen (2023) & Klimaprojektionen bis 2100 (RCP 4.5/8.5)</td>
+                                    <td><span class="status-badge status-verified">✓ Verifiziert</span></td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Strommarkt-Preise</strong></td>
+                                    <td>SMARD.de (ENTSO-E Transparenzplattform)</td>
+                                    <td>Preispfade zur Quantifizierung von Solar-Kannibalisierungseffekten</td>
+                                    <td><span class="status-badge status-verified">✓ Verifiziert</span></td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Finanzierungs-Benchmarks</strong></td>
+                                    <td>KfW Erneuerbare Energien Standard (Modul 270)</td>
+                                    <td>Kreditparameter: 75% Leverage, 4.0% p.a. Zinssatz, 20 Jahre Annuitätentilgungsplan</td>
+                                    <td><span class="status-badge status-verified">✓ Verifiziert</span></td>
                                 </tr>
                             </tbody>
                         </table>
