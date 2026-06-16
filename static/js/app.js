@@ -317,6 +317,10 @@ async function loadParks() {
         updateSelectedParkCoordinates();
         updateVisualizer();
         
+        // Initialize map and markers
+        initMap();
+        populateMapMarkers();
+        
         // Do NOT run initial simulation automatically on load
         // calculateSimulation();
         
