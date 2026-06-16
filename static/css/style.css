@@ -946,162 +946,82 @@ input[type="range"]::-webkit-slider-thumb:hover {
     font-weight: bold;
 }
 
-/* --- Germany Map Landing Page Views & Layouts --- */
-.view-container {
+/* --- Covenant Warning Card --- */
+.covenant-card {
+    padding: 1.5rem;
+    border: 1px solid rgba(239, 68, 68, 0.25);
+    background: linear-gradient(135deg, rgba(239, 68, 68, 0.06) 0%, rgba(9, 9, 11, 0) 100%);
+    border-radius: var(--border-radius-md);
     display: flex;
     flex-direction: column;
-    gap: 1.75rem;
-    width: 100%;
+    gap: 0.75rem;
+    margin-top: 1.5rem;
+    transition: all var(--transition-normal);
 }
 
-.map-layout {
-    display: flex;
-    flex-direction: column;
-    gap: 1.5rem;
+.covenant-card:hover {
+    border-color: rgba(239, 68, 68, 0.45);
+    background: linear-gradient(135deg, rgba(239, 68, 68, 0.09) 0%, rgba(9, 9, 11, 0) 100%);
 }
 
-.map-intro h1 {
-    font-family: var(--font-heading);
-    font-size: 1.75rem;
-    font-weight: 700;
-    margin-bottom: 0.5rem;
-}
-
-.map-intro p {
-    color: var(--text-secondary);
-    font-size: 0.95rem;
-    max-width: 800px;
-}
-
-/* Relative Container for Floating Card */
-.map-container-relative {
-    position: relative;
-    width: 100%;
-    height: 70vh;
-    border-radius: var(--border-radius-lg);
-    overflow: hidden;
-    border: 1px solid var(--card-border);
-}
-
-#germany-map {
-    width: 100%;
-    height: 100%;
-    z-index: 1;
-    background-color: var(--bg-primary); /* Map loader color */
-}
-
-/* Glowing Neon Map Pins */
-.custom-map-pin {
+.covenant-header {
     display: flex;
     align-items: center;
-    justify-content: center;
+    gap: 0.5rem;
 }
 
-.pin-dot {
-    width: 10px;
-    height: 10px;
-    border-radius: 50%;
-    background-color: var(--color-teal);
-    border: 2px solid #ffffff;
-    box-shadow: 0 0 10px var(--color-teal), 0 0 20px var(--color-teal);
-    cursor: pointer;
-    transition: transform 0.15s ease, background-color 0.15s ease;
+.covenant-icon {
+    font-size: 1.25rem;
 }
 
-.pin-dot:hover {
-    transform: scale(1.35);
-    background-color: #ffffff;
-    border-color: var(--color-teal);
-    box-shadow: 0 0 15px #ffffff, 0 0 25px var(--color-teal);
-}
-
-/* Map Mini-Detail Overlay Card */
-.map-detail-card {
-    position: absolute;
-    top: 1.5rem;
-    right: 1.5rem;
-    width: 320px;
-    z-index: 10;
-    padding: 1.5rem;
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
-    animation: slideIn 0.3s ease;
-    background: rgba(24, 24, 27, 0.92) !important;
-    backdrop-filter: blur(10px);
-    border-radius: var(--border-radius-md);
-    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
-}
-
-@keyframes slideIn {
-    from { opacity: 0; transform: translateX(20px); }
-    to { opacity: 1; transform: translateX(0); }
-}
-
-.close-detail-btn {
-    position: absolute;
-    top: 0.5rem;
-    right: 0.75rem;
-    background: transparent;
-    border: none;
-    color: var(--text-secondary);
-    font-size: 1.4rem;
-    cursor: pointer;
-    line-height: 1;
-}
-
-.close-detail-btn:hover {
-    color: var(--text-primary);
-}
-
-.detail-subtitle {
-    font-size: 0.8rem;
-    color: var(--text-secondary);
-    margin-top: -0.25rem;
-}
-
-.detail-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 1.25rem 1rem;
-    border-top: 1px solid var(--card-border);
-    border-bottom: 1px solid var(--card-border);
-    padding: 1rem 0;
-    margin: 0.25rem 0;
-}
-
-.detail-metric {
-    display: flex;
-    flex-direction: column;
-    gap: 0.25rem;
-}
-
-.detail-label {
-    font-size: 0.7rem;
-    color: var(--text-muted);
-    text-transform: uppercase;
-    font-weight: 600;
-    letter-spacing: 0.2px;
-}
-
-.detail-value {
+.covenant-title {
     font-family: var(--font-heading);
     font-size: 1.05rem;
     font-weight: 600;
+    color: var(--color-red);
+}
+
+.covenant-desc {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    line-height: 1.5;
+}
+
+.covenant-desc strong {
     color: var(--text-primary);
 }
 
-.text-emerald {
-    color: var(--color-emerald) !important;
+.covenant-metrics {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin-top: 0.5rem;
+    border-top: 1px solid var(--card-border);
+    padding-top: 0.75rem;
 }
 
-.val-orange {
-    color: var(--color-amber) !important;
+.covenant-metric {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
 }
 
-.analyze-btn {
-    width: 100%;
-    margin-top: 0.25rem;
+/* Full Width Card layout */
+.chart-card.full-width {
+    grid-column: 1 / -1;
 }
 
+/* Status Badges */
+.status-badge {
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 0.15rem 0.45rem;
+    border-radius: 4px;
+    display: inline-block;
+}
+
+.status-verified {
+    background: rgba(16, 185, 129, 0.1);
+    color: var(--color-emerald);
+}
 

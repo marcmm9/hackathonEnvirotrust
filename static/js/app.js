@@ -8,8 +8,7 @@ let parksList = [];
 let currentMode = 'select'; // 'select' or 'custom'
 let amortizationChartInstance = null;
 let cashflowChartInstance = null;
-let map = null;
-let markersGroup = null;
+let covenantChartInstance = null;
 
 // Global helper functions for inline HTML event handlers
 window.formatCurrency = function(val) {
@@ -446,11 +445,33 @@ async function calculateSimulation() {
             }
         }
         
+        // Update covenant warning card
+        const covenantCard = document.getElementById('covenant-warning-card');
+        if (covenantCard) {
+            const covInfo = data.covenants_info;
+            if (covInfo && covInfo.has_covenant_breach) {
+                const worstYearData = data.simulation[covInfo.worst_year_idx - 1];
+                const cfads = worstYearData.revenue - covInfo.opex_annual_bank;
+                const gap = Math.max(0, 1.20 * covInfo.annuity_bank - cfads);
+                
+                document.getElementById('covenant-year').textContent = covInfo.worst_year_simulated;
+                document.getElementById('covenant-dscr-val').textContent = formatDecimals(covInfo.worst_year_dscr, 2);
+                document.getElementById('covenant-annuity').textContent = formatCurrency(covInfo.annuity_bank);
+                document.getElementById('covenant-liquidity-gap').textContent = formatCurrency(gap);
+                covenantCard.classList.remove('hidden');
+            } else {
+                covenantCard.classList.add('hidden');
+            }
+        }
+        
         // 2. Render KPIs
         updateKPIs(data);
         
         // 3. Render Charts
         renderCharts(data.simulation);
+        if (data.covenants_info) {
+            renderCovenantChart(data.covenants_info);
+        }
         
         // 4. Render Cashflow Table
         renderTable(data.simulation);
@@ -712,6 +733,34 @@ function renderTable(simulationData) {
         tdCost.textContent = formatCurrency(row.op_cost);
         tr.appendChild(tdCost);
         
+        // DSCR
+        const tdDscr = document.createElement('td');
+        if (row.annuity > 0) {
+            tdDscr.textContent = formatDecimals(row.dscr, 2);
+            tdDscr.style.fontWeight = '600';
+            if (row.dscr < 1.20) {
+                tdDscr.className = 'val-negative';
+            } else {
+                tdDscr.className = 'val-positive';
+            }
+        } else {
+            tdDscr.textContent = 'N/A';
+        }
+        tr.appendChild(tdDscr);
+        
+        // Covenant-Status
+        const tdStatus = document.createElement('td');
+        if (row.annuity > 0) {
+            if (row.covenant_breached) {
+                tdStatus.innerHTML = '<span class="status-badge status-verified" style="background: rgba(239, 68, 68, 0.1); color: var(--color-red);">✗ Verstoß</span>';
+            } else {
+                tdStatus.innerHTML = '<span class="status-badge status-verified">✓ Eingehalten</span>';
+            }
+        } else {
+            tdStatus.innerHTML = '<span class="status-badge status-verified" style="background: rgba(255, 255, 255, 0.05); color: var(--text-muted);">Schuldenfrei</span>';
+        }
+        tr.appendChild(tdStatus);
+        
         // Net Profit (Reingewinn)
         const tdNet = document.createElement('td');
         tdNet.textContent = formatCurrency(row.net_profit);
@@ -814,173 +863,89 @@ function updateRiskBar(id, value) {
 }
 
 /**
- * Initializes the Germany Map using Leaflet.js
+ * Renders the daily cumulative cashflow vs required debt coverage limit
  */
-function initMap() {
-    const mapContainer = document.getElementById('germany-map');
-    if (!mapContainer || map) return;
-    
-    // Center map on Germany
-    map = L.map('germany-map').setView([51.1657, 10.4515], 6);
-    
-    // Premium dark tile layer
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
-        subdomains: 'abcd',
-        maxZoom: 20
-    }).addTo(map);
-    
-    markersGroup = L.layerGroup().addTo(map);
-}
-
-/**
- * Places glowing pins for all loaded solar parks on the map
- */
-function populateMapMarkers() {
-    if (!markersGroup || !parksList) return;
-    markersGroup.clearLayers();
-    
-    parksList.forEach((park, index) => {
-        if (!park.lat || !park.lon) return;
-        
-        // Glowing pin dot using divIcon
-        const pinIcon = L.divIcon({
-            className: 'custom-map-pin',
-            html: '<div class="pin-dot"></div>',
-            iconSize: [12, 12],
-            iconAnchor: [6, 6]
-        });
-        
-        const marker = L.marker([park.lat, park.lon], { icon: pinIcon });
-        marker.on('click', () => {
-            showParkMiniDetails(park, index);
-        });
-        markersGroup.addLayer(marker);
-    });
-}
-
-/**
- * Closes the floating mini detail card on the map
- */
-window.closeMiniDetails = function() {
-    const card = document.getElementById('map-detail-card');
-    if (card) {
-        card.classList.add('hidden');
+function renderCovenantChart(covenantsInfo) {
+    const ctx = document.getElementById('covenantChart').getContext('2d');
+    if (covenantChartInstance) {
+        covenantChartInstance.destroy();
     }
-};
-
-/**
- * Displays preview metrics and safety score of a clicked solar park
- */
-window.showParkMiniDetails = async function(park, index) {
-    const card = document.getElementById('map-detail-card');
-    if (!card) return;
     
-    card.classList.remove('hidden');
+    const days = covenantsInfo.daily_covenant_curve.map(d => `Tag ${d.day}`);
+    const cashflowData = covenantsInfo.daily_covenant_curve.map(d => d.cum_cashflow);
+    const targetData = covenantsInfo.daily_covenant_curve.map(d => d.target_liquidity);
     
-    document.getElementById('detail-title').textContent = park.city ? `Solarpark in ${park.city}` : 'Solarpark';
-    document.getElementById('detail-location').textContent = `${park.postal || ''} | ${park.lat.toFixed(4)}° N, ${park.lon.toFixed(4)}° E`;
-    document.getElementById('detail-area').textContent = `${park.area_ha.toFixed(1)} ha`;
-    document.getElementById('detail-power').textContent = `${park.mastr_mw.toFixed(2)} MW`;
+    document.getElementById('covenant-chart-year').textContent = covenantsInfo.worst_year_simulated;
     
-    // Loading states
-    document.getElementById('detail-revenue').textContent = 'Berechne...';
-    const safetyEl = document.getElementById('detail-safety');
-    safetyEl.textContent = 'Berechne...';
-    safetyEl.className = 'detail-value';
-    
-    // Setup detailed analyze button
-    const analyzeBtn = document.getElementById('btn-detailed-analyze');
-    analyzeBtn.onclick = function() {
-        // Switch to dashboard view
-        showView('dashboard');
-        
-        // Switch mode to select
-        switchMode('select');
-        
-        // Set selection dropdown
-        const selectEl = document.getElementById('park-select');
-        selectEl.value = index;
-        updateSelectedParkCoordinates();
-        updateVisualizer();
-        
-        // Run full simulation
-        calculateSimulation();
-    };
-    
-    try {
-        // Perform a fast 1-year simulation to get first-year revenue and risk profile
-        const response = await fetch('/api/simulate', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
+    covenantChartInstance = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: days,
+            datasets: [
+                {
+                    label: 'Kumulierter Cashflow (Umsatz - OpEx)',
+                    data: cashflowData,
+                    borderColor: '#06b6d4',
+                    borderWidth: 2,
+                    fill: false,
+                    pointRadius: 0,
+                    tension: 0.1
+                },
+                {
+                    label: 'Geforderte Liquidität (1.20 * Schuldendienst)',
+                    data: targetData,
+                    borderColor: '#ef4444',
+                    borderWidth: 1.5,
+                    borderDash: [5, 5],
+                    fill: false,
+                    pointRadius: 0,
+                    tension: 0.1
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'top',
+                    labels: {
+                        color: '#fafafa',
+                        font: { family: 'Inter', size: 11 }
+                    }
+                },
+                tooltip: {
+                    mode: 'index',
+                    intersect: false,
+                    callbacks: {
+                        label: function(context) {
+                            return `${context.dataset.label}: ${formatCurrency(context.parsed.y)}`;
+                        }
+                    }
+                }
             },
-            body: JSON.stringify({
-                area_ha: park.area_ha,
-                lat: park.lat,
-                lon: park.lon,
-                year: park.year,
-                years: 1, // Only 1 year for lightning-fast estimation
-                purchase_price_per_mw: 800000,
-                elec_price: 0.08,
-                degradation: 0.5,
-                use_future_projections: false,
-                op_cost_mode: 'standard',
-                target_profit: 0
-            })
-        });
-        
-        if (!response.ok) throw new Error('API failure');
-        
-        const data = await response.json();
-        
-        // Show Year 1 estimated revenue
-        if (data.simulation && data.simulation[0]) {
-            document.getElementById('detail-revenue').textContent = formatCurrency(data.simulation[0].revenue);
-        } else {
-            document.getElementById('detail-revenue').textContent = 'k.A.';
-        }
-        
-        // Show inverted risk safety score (where high score is safe/good)
-        if (data.risk_profile) {
-            const safetyScore = data.risk_profile.overall_risk;
-            safetyEl.textContent = `${safetyScore.toFixed(1)}/10`;
-            
-            if (safetyScore >= 7.0) {
-                safetyEl.className = 'detail-value val-positive';
-            } else if (safetyScore >= 4.0) {
-                safetyEl.className = 'detail-value val-orange';
-            } else {
-                safetyEl.className = 'detail-value val-negative';
+            scales: {
+                x: {
+                    grid: { color: '#27272a', drawTicks: false },
+                    ticks: {
+                        color: '#a1a1aa',
+                        font: { family: 'Inter', size: 10 },
+                        maxTicksLimit: 12
+                    }
+                },
+                y: {
+                    grid: { color: '#27272a', drawTicks: false },
+                    ticks: {
+                        color: '#a1a1aa',
+                        font: { family: 'Inter', size: 11 },
+                        callback: function(value) {
+                            if (value >= 1e6) return (value / 1e6).toFixed(1) + ' Mio. €';
+                            if (value <= -1e6) return (value / 1e6).toFixed(1) + ' Mio. €';
+                            return value.toLocaleString('de-DE') + ' €';
+                        }
+                    }
+                }
             }
         }
-    } catch (err) {
-        console.error('Error fetching preview details:', err);
-        document.getElementById('detail-revenue').textContent = 'Fehler';
-        safetyEl.textContent = 'Fehler';
-        safetyEl.className = 'detail-value val-negative';
-    }
-};
-
-/**
- * Switches the active view/screen between Map landing page and detailed Dashboard
- */
-window.showView = function(viewName) {
-    const landing = document.getElementById('landing-page');
-    const dashboard = document.getElementById('dashboard-page');
-    
-    if (viewName === 'landing') {
-        landing.classList.remove('hidden');
-        dashboard.classList.add('hidden');
-        
-        // Correct Leaflet container sizing when shown
-        if (map) {
-            setTimeout(() => {
-                map.invalidateSize();
-            }, 100);
-        }
-    } else {
-        landing.classList.add('hidden');
-        dashboard.classList.remove('hidden');
-    }
-};
+    });
+}
