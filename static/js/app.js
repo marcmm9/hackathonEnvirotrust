@@ -865,6 +865,129 @@ function updateRiskBar(id, value) {
 /**
  * Renders the daily cumulative cashflow vs required debt coverage limit
  */
+// Expose calculateSimulation globally for inline HTML onclick handlers
+window.calculateSimulation = calculateSimulation;
+
+/**
+ * Switch between the landing page (map view) and the detailed dashboard view
+ */
+window.showView = function(view) {
+    const landingPage = document.getElementById('landing-page');
+    const dashboardPage = document.getElementById('dashboard-page');
+    
+    if (view === 'dashboard') {
+        landingPage.classList.add('hidden');
+        dashboardPage.classList.remove('hidden');
+    } else {
+        dashboardPage.classList.add('hidden');
+        landingPage.classList.remove('hidden');
+        // Invalidate map size when coming back so tiles render correctly
+        if (window.germanyMap) {
+            setTimeout(() => window.germanyMap.invalidateSize(), 200);
+        }
+    }
+};
+
+/**
+ * Close the floating mini detail card on the map
+ */
+window.closeMiniDetails = function() {
+    const card = document.getElementById('map-detail-card');
+    if (card) {
+        card.classList.add('hidden');
+    }
+};
+
+/**
+ * Initialize the Leaflet map centered on Germany
+ */
+function initMap() {
+    const mapEl = document.getElementById('germany-map');
+    if (!mapEl) return;
+    
+    const map = L.map('germany-map', {
+        center: [51.1657, 10.4515],
+        zoom: 6,
+        zoomControl: true,
+        attributionControl: true
+    });
+    
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/">CARTO</a>',
+        subdomains: 'abcd',
+        maxZoom: 19
+    }).addTo(map);
+    
+    window.germanyMap = map;
+}
+
+/**
+ * Add markers for each solar park onto the Leaflet map
+ */
+function populateMapMarkers() {
+    if (!window.germanyMap || parksList.length === 0) return;
+    
+    const map = window.germanyMap;
+    
+    // Custom marker icon
+    const solarIcon = L.divIcon({
+        className: 'solar-marker',
+        html: '<div class="solar-marker-dot"></div>',
+        iconSize: [12, 12],
+        iconAnchor: [6, 6]
+    });
+    
+    parksList.forEach((park, index) => {
+        if (!park.lat || !park.lon) return;
+        
+        const marker = L.marker([park.lat, park.lon], { icon: solarIcon }).addTo(map);
+        
+        marker.on('click', () => {
+            showMiniDetails(park, index);
+        });
+    });
+}
+
+/**
+ * Show the floating mini detail card for a given solar park
+ */
+function showMiniDetails(park, index) {
+    const card = document.getElementById('map-detail-card');
+    if (!card) return;
+    
+    document.getElementById('detail-title').textContent = park.city || 'Solarpark';
+    document.getElementById('detail-location').textContent =
+        `${park.lat.toFixed(4)}° N, ${park.lon.toFixed(4)}° E`;
+    document.getElementById('detail-area').textContent = `${park.area_ha.toFixed(1)} ha`;
+    
+    // Estimate power from area (rough: ~0.6 MW/ha)
+    const estPower = (park.capacity_mw || park.area_ha * 0.6).toFixed(1);
+    document.getElementById('detail-power').textContent = `~${estPower} MW`;
+    
+    // Rough revenue estimate
+    const estRevenue = estPower * 1000 * 950 * 0.08; // kWp * spec_yield * elec_price
+    document.getElementById('detail-revenue').textContent = `~${formatCurrency(estRevenue)}`;
+    
+    document.getElementById('detail-safety').textContent = '-';
+    
+    // Setup the "Detaillierte Analyse" button
+    const analyzeBtn = document.getElementById('btn-detailed-analyze');
+    analyzeBtn.onclick = () => {
+        // Select the park in the dropdown and switch to the dashboard
+        const selectEl = document.getElementById('park-select');
+        if (selectEl) {
+            selectEl.value = index;
+            onParkSelectChange();
+        }
+        switchMode('select');
+        showView('dashboard');
+        // Auto-run simulation
+        calculateSimulation();
+    };
+    
+    card.classList.remove('hidden');
+}
+
 function renderCovenantChart(covenantsInfo) {
     const ctx = document.getElementById('covenantChart').getContext('2d');
     if (covenantChartInstance) {
