@@ -288,6 +288,9 @@ def simulate():
         custom_op_cost_escalation = float(data.get('custom_op_cost_escalation', 0.0)) / 100.0
         inflation_rate = float(data.get('inflation_rate', 2.0)) / 100.0
         target_profit = float(data.get('target_profit', 0.0))
+        rcp_scenario = data.get('rcp_scenario', 'rcp85')  # 'rcp45' oder 'rcp85'
+        if rcp_scenario not in ('rcp45', 'rcp85'):
+            rcp_scenario = 'rcp85'
     except (ValueError, TypeError) as e:
         return jsonify({"error": f"Ungültige Parameter: {str(e)}"}), 400
 
@@ -395,9 +398,9 @@ def simulate():
         
         if (use_future_projections or op_cost_mode == 'model') and sim_year in proj_by_year:
             proj = proj_by_year[sim_year]
-            heatwaves = proj.get('heatwaves_rcp85', 0)
-            extreme_wind_days = proj.get('extreme_wind_speed_days_rcp85', 10.0)
-            mean_wind_speed = proj.get('mean wind speed rcp85(m/s)', 3.5)
+            heatwaves = proj.get(f'heatwaves_{rcp_scenario}', 0)
+            extreme_wind_days = proj.get(f'extreme_wind_speed_days_{rcp_scenario}', 10.0)
+            mean_wind_speed = proj.get(f'mean wind speed {rcp_scenario}(m/s)', 3.5)
             
             if use_future_projections:
                 year_yield_multiplier = max(0.5, 1.0 - (0.008 * heatwaves))
@@ -442,9 +445,9 @@ def simulate():
         
         if (use_future_projections or op_cost_mode == 'model') and sim_year in proj_by_year:
             proj = proj_by_year[sim_year]
-            heatwaves = proj.get('heatwaves_rcp85', 0)
-            extreme_wind_days = proj.get('extreme_wind_speed_days_rcp85', 10.0)
-            mean_wind_speed = proj.get('mean wind speed rcp85(m/s)', 3.5)
+            heatwaves = proj.get(f'heatwaves_{rcp_scenario}', 0)
+            extreme_wind_days = proj.get(f'extreme_wind_speed_days_{rcp_scenario}', 10.0)
+            mean_wind_speed = proj.get(f'mean wind speed {rcp_scenario}(m/s)', 3.5)
             
             if use_future_projections:
                 # 1. Hitzewellen-Ertragsminderung: Jede Hitzewelle reduziert den Ertrag in diesem Jahr um 0.8%
@@ -500,16 +503,17 @@ def simulate():
     if use_future_projections and future_projs:
         relevant_projs = [proj_by_year[y] for y in range(year, year + years) if y in proj_by_year]
         if relevant_projs:
-            avg_heatwaves = sum(p.get('heatwaves_rcp85', 0) for p in relevant_projs) / len(relevant_projs)
-            avg_ext_wind = sum(p.get('extreme_wind_speed_days_rcp85', 0.0) for p in relevant_projs) / len(relevant_projs)
+            avg_heatwaves = sum(p.get(f'heatwaves_{rcp_scenario}', 0) for p in relevant_projs) / len(relevant_projs)
+            avg_ext_wind = sum(p.get(f'extreme_wind_speed_days_{rcp_scenario}', 0.0) for p in relevant_projs) / len(relevant_projs)
             
             # Das Hitzerisiko und Windrisiko steigen basierend auf den durchschnittlichen Projektionen
             heat_r = min(10.0, heat_r + avg_heatwaves * 0.4)
             wind_r = min(10.0, wind_r + max(0.0, avg_ext_wind - 10.0) * 0.3)
             
+            rcp_label = 'RCP 4.5' if rcp_scenario == 'rcp45' else 'RCP 8.5'
             risk_profile['heat_risk'] = round(heat_r, 1)
             risk_profile['wind_risk'] = round(wind_r, 1)
-            risk_profile['source'] = 'EnviroTrust API (mit Zukunfts-Szenario RCP 8.5)'
+            risk_profile['source'] = f'EnviroTrust API (mit Zukunfts-Szenario {rcp_label})'
 
     # Berechne Gesamtrisiko (0-10) neu mit den (eventuell angepassten) Risikofaktoren
     raw_avg = (air_q + flood_r + wildfire_r + wind_r + heat_r) / 5.0
@@ -560,7 +564,7 @@ def simulate():
         if (use_future_projections or op_cost_mode == 'model') and sim_year in proj_by_year:
             proj = proj_by_year[sim_year]
             if use_future_projections:
-                extreme_wind_days = proj.get('extreme_wind_speed_days_rcp85', 10.0)
+                extreme_wind_days = proj.get(f'extreme_wind_speed_days_{rcp_scenario}', 10.0)
                 wind_excess = max(0.0, extreme_wind_days - 10.0)
                 y_degr = adjusted_degradation + (0.0002 * wind_excess)
         temp_cap_mult *= (1.0 - y_degr)
@@ -571,7 +575,7 @@ def simulate():
     if (use_future_projections or op_cost_mode == 'model') and sim_year in proj_by_year:
         proj = proj_by_year[sim_year]
         if use_future_projections:
-            heatwaves = proj.get('heatwaves_rcp85', 0)
+            heatwaves = proj.get(f'heatwaves_{rcp_scenario}', 0)
             worst_year_yield_multiplier = max(0.5, 1.0 - (0.008 * heatwaves))
 
     # Simulate the worst year daily
@@ -643,6 +647,7 @@ def simulate():
         "overheat_info": overheat_info,
         "simulation": sim_data,
         "future_projections_active": use_future_projections,
+        "rcp_scenario": rcp_scenario,
         "covenants_info": covenants_info
     }
 

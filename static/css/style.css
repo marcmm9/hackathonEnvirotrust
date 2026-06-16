@@ -1025,6 +1025,22 @@ input[type="range"]::-webkit-slider-thumb:hover {
     color: var(--color-emerald);
 }
 
+/* --- RCP Scenario Info Text --- */
+.rcp-info-text {
+    margin-top: 0.5rem;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    line-height: 1.4;
+    padding: 0.4rem 0.6rem;
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid var(--card-border);
+    border-radius: var(--border-radius-sm);
+}
+
+.rcp-info-text strong {
+    color: var(--text-secondary);
+}
+
 /* --- Landing Page / Map Layout --- */
 .view-container {
     width: 100%;

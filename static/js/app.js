@@ -6,6 +6,7 @@
 // Global state variables
 let parksList = [];
 let currentMode = 'select'; // 'select' or 'custom'
+let rcpScenario = 'rcp85'; // 'rcp45' or 'rcp85'
 let amortizationChartInstance = null;
 let cashflowChartInstance = null;
 let covenantChartInstance = null;
@@ -226,7 +227,57 @@ window.onOpCostModeChange = function() {
         customContainer.classList.add('hidden');
         modelContainer.classList.add('hidden');
     }
+    updateRcpVisibility();
 };
+
+/**
+ * Handles the RCP scenario toggle buttons
+ */
+window.setRcpScenario = function(scenario) {
+    rcpScenario = scenario;
+    const btn45 = document.getElementById('btn-rcp45');
+    const btn85 = document.getElementById('btn-rcp85');
+    const infoText = document.getElementById('rcp-info-text');
+    
+    if (scenario === 'rcp45') {
+        btn45.classList.add('active');
+        btn85.classList.remove('active');
+        if (infoText) {
+            infoText.innerHTML = '<strong>RCP 4.5</strong> – Moderat: Emissionen stabilisieren sich bis 2050. Optimistisches Szenario mit aktivem Klimaschutz.';
+        }
+    } else {
+        btn45.classList.remove('active');
+        btn85.classList.add('active');
+        if (infoText) {
+            infoText.innerHTML = '<strong>RCP 8.5</strong> – Pessimistisch: Hohe Emissionen, starker Temperaturanstieg. Worst-Case-Szenario.';
+        }
+    }
+};
+
+/**
+ * Triggered when the Zukunftsprognosen checkbox changes
+ */
+window.onFutureProjectionsChange = function() {
+    updateRcpVisibility();
+};
+
+/**
+ * Shows or hides the RCP scenario selector based on whether
+ * future projections or KI-model O&M mode are active
+ */
+function updateRcpVisibility() {
+    const futureChecked = document.getElementById('param-future-projections').checked;
+    const opMode = document.getElementById('param-op-cost-mode').value;
+    const rcpContainer = document.getElementById('rcp-scenario-container');
+    
+    if (rcpContainer) {
+        if (futureChecked || opMode === 'model') {
+            rcpContainer.classList.remove('hidden');
+        } else {
+            rcpContainer.classList.add('hidden');
+        }
+    }
+}
 
 /**
  * Sync initial badge text with slider values
@@ -402,7 +453,8 @@ async function calculateSimulation() {
                 custom_op_cost_per_mw,
                 custom_op_cost_escalation,
                 inflation_rate,
-                target_profit
+                target_profit,
+                rcp_scenario: rcpScenario
             })
         });
         
@@ -424,6 +476,11 @@ async function calculateSimulation() {
         if (futureBadge) {
             if (data.future_projections_active) {
                 futureBadge.classList.remove('hidden');
+                // Update RCP label in the badge
+                const rcpBadgeLabel = document.getElementById('rcp-badge-label');
+                if (rcpBadgeLabel) {
+                    rcpBadgeLabel.textContent = data.rcp_scenario === 'rcp45' ? 'RCP 4.5' : 'RCP 8.5';
+                }
             } else {
                 futureBadge.classList.add('hidden');
             }

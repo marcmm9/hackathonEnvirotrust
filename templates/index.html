@@ -14,7 +14,7 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <!-- Custom Style Sheet -->
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=1.4">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=1.5">
 </head>
 <body>
     <div class="app-container">
@@ -207,10 +207,28 @@
 
                 <div class="input-field checkbox-field">
                     <label class="checkbox-container">
-                        <input type="checkbox" id="param-future-projections">
+                        <input type="checkbox" id="param-future-projections" onchange="onFutureProjectionsChange()">
                         <span class="checkmark"></span>
                         Zukunftsprognosen (Klimawandel)
                     </label>
+                </div>
+
+                <!-- RCP Scenario Selection (shown when future projections or model mode active) -->
+                <div id="rcp-scenario-container" class="hidden" style="margin-top: -0.5rem;">
+                    <div class="control-group">
+                        <label class="group-label">Klimaszenario (IPCC)</label>
+                        <div class="toggle-buttons">
+                            <button id="btn-rcp45" class="toggle-btn" onclick="setRcpScenario('rcp45')">
+                                RCP 4.5
+                            </button>
+                            <button id="btn-rcp85" class="toggle-btn active" onclick="setRcpScenario('rcp85')">
+                                RCP 8.5
+                            </button>
+                        </div>
+                    </div>
+                    <div class="rcp-info-text" id="rcp-info-text">
+                        <strong>RCP 8.5</strong> – Pessimistisch: Hohe Emissionen, starker Temperaturanstieg. Worst-Case-Szenario.
+                    </div>
                 </div>
 
                 <hr class="divider">
@@ -377,7 +395,7 @@
                     <div class="risk-effects-note">
                         Das Sicherheitsprofil beeinflusst die Investitionsrechnung (z.B. O&M-Kosten und Degradation). Quelle: <span id="risk-source">-</span>
                         <div id="future-projections-badge" class="future-badge hidden">
-                            ⚠️ Zukunftsprognosen (Szenario RCP 8.5) einbezogen – Sicherheitswerte wurden an langfristige Klimaprognosen angepasst.
+                            ⚠️ Zukunftsprognosen (Szenario <span id="rcp-badge-label">RCP 8.5</span>) einbezogen – Sicherheitswerte wurden an langfristige Klimaprognosen angepasst.
                         </div>
                     </div>
                 </div>
@@ -524,6 +542,6 @@
 </div> <!-- Closes app-container -->
 
     <!-- Application Script -->
-    <script src="{{ url_for('static', filename='js/app.js') }}?v=1.4"></script>
+    <script src="{{ url_for('static', filename='js/app.js') }}?v=1.5"></script>
 </body>
 </html>
